@@ -1,0 +1,6 @@
+{
+  "service_name": "c-gateway",
+  "otlp_endpoint": "http://localhost:4318",
+  "export_mode": "http",
+  "enabled": true
+}

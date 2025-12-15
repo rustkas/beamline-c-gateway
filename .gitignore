@@ -1,0 +1,26 @@
+# build artifacts
+/build/
+/out/
+/bin/
+/dist/
+
+# object files
+*.o
+*.a
+*.so
+*.dylib
+
+# cmake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/
+
+# temp
+*.log
+*.tmp
