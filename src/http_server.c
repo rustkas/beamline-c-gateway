@@ -24,6 +24,8 @@
 #include <fcntl.h>
 
 #include <jansson.h>
+#include <stdarg.h> /* For va_list, va_start, va_end */
+#include <signal.h>
 
 /* Request context available for prototypes below */
 typedef struct {
@@ -38,9 +40,47 @@ typedef struct {
 const char *nats_get_status_string(void);
 
 /* Forward declarations to avoid implicit prototypes */
+static void log_json(const char *level, const char *subsystem, const char *message, ...);
 static json_t *filter_pii_json(json_t *obj);
 static json_t *filter_pii_json_array(json_t *arr);
 int map_router_error_status(const char *resp_json);
+
+static void log_json(const char *level, const char *subsystem, const char *message, ...) {
+    char log_buffer[2048] = {0};
+    va_list args;
+    va_start(args, message);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    time_t now = tv.tv_sec;
+    struct tm *tm_info = gmtime(&now);
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", tm_info);
+    snprintf(timestamp + strlen(timestamp), sizeof(timestamp) - strlen(timestamp), ".%03ldZ", tv.tv_usec / 1000);
+    char formatted_message[1024];
+    vsnprintf(formatted_message, sizeof(formatted_message), message, args);
+    va_end(args);
+    snprintf(log_buffer, sizeof(log_buffer),
+        "{\"timestamp\":\"%s\",\"level\":\"%s\",\"component\":\"c-gateway\",\"subsystem\":\"%s\",\"message\":\"%s\"}",
+        timestamp, level, subsystem, formatted_message);
+    if (strcasecmp(level, "error") == 0) {
+        fprintf(stderr, "%s\n", log_buffer);
+    } else {
+        fprintf(stdout, "%s\n", log_buffer);
+    }
+}
+
+static volatile sig_atomic_t g_terminate = 0;
+static int g_server_fd = -1;
+
+static void on_signal(int sig)
+{
+    (void)sig;
+    g_terminate = 1;
+    if (g_server_fd != -1) {
+        close(g_server_fd);
+        g_server_fd = -1;
+    }
+}
 
 /* ---------------- SSE clients pool (non-blocking, simple) ---------------- */
 #define SSE_MAX_CLIENTS 64
@@ -117,6 +157,14 @@ static void sse_broadcast_json(const char *tenant_id, const char *event, const c
     }
 }
 
+static void sse_shutdown(void)
+{
+    for (int i=0;i<SSE_MAX_CLIENTS;i++) {
+        if (sse_clients[i].fd != -1) {
+            sse_unregister_fd(sse_clients[i].fd);
+        }
+    }
+}
 static const char *query_get_param(const char *path_with_query, const char *key, char *buf, size_t buflen)
 {
     const char *q = strchr(path_with_query, '?');
@@ -3154,6 +3202,15 @@ int http_server_run(const char *port_str) {
         perror("socket");
         return 1;
     }
+    g_server_fd = server_fd;
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = on_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    (void)sigaction(SIGTERM, &sa, NULL);
+    (void)sigaction(SIGINT, &sa, NULL);
 
     int opt = 1;
     (void)setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -3176,13 +3233,13 @@ int http_server_run(const char *port_str) {
         return 1;
     }
 
-    printf("C-Gateway listening on port %d\n", port);
+    log_json("info", "main", "C-Gateway listening on port %d", port);
     start_time_sec = time(NULL);
     sse_init_pool();
     
     // Initialize Prometheus metrics
     if (metrics_registry_init() != 0) {
-        fprintf(stderr, "Failed to initialize metrics registry\n");
+        log_json("error", "main", "Failed to initialize metrics registry");
         close(server_fd);
         return 1;
     }
@@ -3194,23 +3251,26 @@ int http_server_run(const char *port_str) {
             otlp_endpoint = "http://localhost:4318";  // Default OTLP HTTP endpoint
         }
         if (otel_init("c-gateway", otlp_endpoint) != 0) {
-            fprintf(stderr, "Warning: Failed to initialize OpenTelemetry tracing (tracing disabled)\n");
+            log_json("warn", "main", "Failed to initialize OpenTelemetry tracing (tracing disabled)");
             // Continue without tracing - graceful degradation
         } else {
-            printf("OpenTelemetry tracing enabled: %s\n", otlp_endpoint);
+            log_json("info", "main", "OpenTelemetry tracing enabled: %s", otlp_endpoint);
         }
     }
 
     for (;;) {
+        if (g_terminate) break;
         int client_fd = accept(server_fd, NULL, NULL);
         if (client_fd < 0) {
+            if (g_terminate) break;
             perror("accept");
             continue;
         }
         handle_client(client_fd);
     }
 
-    /* not reached */
-    /* close(server_fd); */
-    /* return 0; */
+    sse_shutdown();
+    if (server_fd != -1) close(server_fd);
+    log_json("info", "main", "C-Gateway shutdown complete");
+    return 0;
 }

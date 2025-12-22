@@ -423,5 +423,5 @@ brew install jansson
 
 - [Unity Test Framework](https://github.com/ThrowTheSwitch/Unity)
 - [Gateway Observability Documentation](../docs/OBSERVABILITY.md) (when created)
-- [Gateway Test Tasks](../../../docs/dev/GATEWAY_OBSERVABILITY_TASKS.md)
+- [Gateway Test Tasks](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_TASKS.md)
 

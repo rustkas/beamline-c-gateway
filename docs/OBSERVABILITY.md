@@ -2,7 +2,7 @@
 
 This document describes the observability features for Gateway in CP1, including structured JSON logging and health endpoints.
 
-CP2/Pre‑release extends Gateway observability with OpenTelemetry tracing (W3C context, OTLP), Prometheus `/metrics` on port 3001, and Grafana dashboards with CP1 filters. See `docs/dev/CP2_OBSERVABILITY_PLAN.md` and `docs/OBSERVABILITY_CP2_TEST_PROFILE.md`.
+CP2/Pre‑release extends Gateway observability with OpenTelemetry tracing (W3C context, OTLP), Prometheus `/metrics` on port 3001, and Grafana dashboards with CP1 filters. See `docs/archive/dev/CP2_OBSERVABILITY_PLAN.md` and `docs/OBSERVABILITY_CP2_TEST_PROFILE.md`.
 
 ## Structured JSON Logging
 
@@ -261,7 +261,7 @@ bash scripts/observability/test_gateway_observability.sh
 GATEWAY_PORT=8080 bash scripts/observability/test_gateway_observability.sh
 ```
 
-See [Gateway Observability Test Documentation](../../../docs/dev/GATEWAY_OBSERVABILITY_TEST.md) for details.
+See [Gateway Observability Test Documentation](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_TEST.md) for details.
 
 ### Health Endpoint Implementation
 
@@ -351,7 +351,7 @@ Gateway provides an E2E test script for real HTTP testing:
 bash scripts/observability/test_gateway_observability.sh
 ```
 
-See [Gateway Observability Test Documentation](../../../docs/dev/GATEWAY_OBSERVABILITY_TEST.md) for details.
+See [Gateway Observability Test Documentation](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_TEST.md) for details.
 
 ## Local Development
 
@@ -787,9 +787,9 @@ For production deployments, see [Production Logging Guide](./PRODUCTION_LOGGING.
 ## References
 
 - [Production Logging Guide](./PRODUCTION_LOGGING.md) - Production log rotation and management
-- [Gateway Observability Test Documentation](../../../docs/dev/GATEWAY_OBSERVABILITY_TEST.md)
-- [Gateway Observability Tasks](../../../docs/dev/GATEWAY_OBSERVABILITY_TASKS.md)
-- [Gateway Observability Additional Tasks](../../../docs/dev/GATEWAY_OBSERVABILITY_ADDITIONAL_TASKS.md)
+- [Gateway Observability Test Documentation](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_TEST.md)
+- [Gateway Observability Tasks](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_TASKS.md)
+- [Gateway Observability Additional Tasks](../../../docs/archive/dev/GATEWAY_OBSERVABILITY_ADDITIONAL_TASKS.md)
 - [CP1 Observability Invariants](../../../docs/OBSERVABILITY_CP1_INVARIANTS.md)
 - [Router Observability Documentation](../../otp/router/docs/OBSERVABILITY.md)
 - [Worker Observability Documentation](../../caf/processor/docs/OBSERVABILITY.md)

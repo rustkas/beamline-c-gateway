@@ -22,7 +22,7 @@
  * - Performance optimization (latency < 5ms p95 for Redis operations)
  * - Alternative backends (NATS JetStream, SQL)
  * 
- * Reference: docs/dev/CP2_TECH_DEBT_SUMMARY.md (Gateway: Distributed Rate Limiting section)
+ * Reference: docs/archive/dev/CP2_TECH_DEBT_SUMMARY.md (Gateway: Distributed Rate Limiting section)
  */
 
 #include "rate_limiter.h"
