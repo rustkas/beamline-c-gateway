@@ -17,6 +17,35 @@
 
 ---
 
+## ✅ What IS Available Right Now
+
+### Readiness Tooling: Smoke Test (Template Mode)
+
+**Script**: `scripts/smoke_cgateway_router.sh`
+
+Even though c-gateway is in stub mode, the smoke test script exists as **readiness tooling**:
+
+```bash
+# Template mode (validates infrastructure, allows stub responses)
+./scripts/smoke_cgateway_router.sh
+
+# This checks:
+# ✓ NATS starts and responds
+# ✓ Router starts and responds  
+# ✓ C-Gateway starts and health endpoint works
+# ✓ HTTP request to /api/v1/routes/decide returns 200
+# ⚠️ Accepts stub responses (expected until integration enabled)
+```
+
+**Purpose**:
+- Validate infrastructure setup
+- Catch deployment/configuration issues early
+- Ready to switch to strict mode when prerequisites met
+
+**See**: `docs/SMOKE_TEST.md` for full documentation
+
+---
+
 ## ✅ What TO Do Right Now
 
 ### 1. Keep Stub Mode Documented
