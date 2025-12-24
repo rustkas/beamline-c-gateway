@@ -34,6 +34,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 option(USE_NATS_LIB "Build with real NATS C client" OFF)
+option(BUILD_IPC_GATEWAY "Build IPC Gateway components" ON)
 
 if(USE_NATS_LIB)
     # Build with real NATS C client (system libnats must be available)
@@ -413,3 +414,103 @@ else()
 endif()
 
 add_test(NAME conflict_contract_test COMMAND c-gateway-conflict-contract-test)
+
+# ============================================================================
+# IPC Gateway Components (Phase 1+2: Unix socket + NATS integration)
+# ============================================================================
+
+if(BUILD_IPC_GATEWAY)
+    message(STATUS "IPC Gateway: ENABLED")
+    
+    # IPC Protocol library (shared by server, bridge, tests)
+    add_library(ipc-protocol STATIC
+        src/ipc_protocol.c
+    )
+    
+    target_include_directories(ipc-protocol PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    
+    # IPC Server library
+    add_library(ipc-server STATIC
+        src/ipc_server.c
+    )
+    
+    target_include_directories(ipc-server PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    
+    target_link_libraries(ipc-server PUBLIC
+        ipc-protocol
+    )
+    
+    # IPC-NATS Bridge library
+    add_library(ipc-nats-bridge STATIC
+        src/ipc_nats_bridge.c
+        src/nats_client_stub.c
+    )
+    
+    target_include_directories(ipc-nats-bridge PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+    
+    target_link_libraries(ipc-nats-bridge PUBLIC
+        ipc-protocol
+    )
+    
+    # IPC Protocol Unit Tests
+    add_executable(ipc-protocol-test
+        tests/test_ipc_protocol.c
+    )
+    
+    target_link_libraries(ipc-protocol-test PRIVATE
+        ipc-protocol
+    )
+    
+    add_test(NAME ipc_protocol_test COMMAND ipc-protocol-test)
+    
+    # IPC Server Demo (basic, no NATS)
+    add_executable(ipc-server-demo
+        examples/ipc_server_demo.c
+    )
+    
+    target_link_libraries(ipc-server-demo PRIVATE
+        ipc-server
+        ipc-protocol
+    )
+    
+    # IPC NATS Demo (with bridge)
+    add_executable(ipc-nats-demo
+        examples/ipc_nats_demo.c
+    )
+    
+    target_link_libraries(ipc-nats-demo PRIVATE
+        ipc-server
+        ipc-protocol
+        ipc-nats-bridge
+    )
+    
+    # Install targets
+    install(TARGETS ipc-protocol ipc-server ipc-nats-bridge
+        ARCHIVE DESTINATION lib
+    )
+    
+    install(TARGETS ipc-server-demo ipc-nats-demo
+        RUNTIME DESTINATION bin
+    )
+    
+    install(FILES
+        include/ipc_protocol.h
+        include/ipc_server.h
+        include/ipc_nats_bridge.h
+        DESTINATION include/c-gateway
+    )
+    
+    message(STATUS "IPC Gateway targets added:")
+    message(STATUS "  Libraries: ipc-protocol, ipc-server, ipc-nats-bridge")
+    message(STATUS "  Tests: ipc-protocol-test")
+    message(STATUS "  Demos: ipc-server-demo, ipc-nats-demo")
+else()
+    message(STATUS "IPC Gateway: DISABLED (use -DBUILD_IPC_GATEWAY=ON to enable)")
+endif()

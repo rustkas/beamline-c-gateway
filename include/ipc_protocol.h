@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/types.h>  /* for ssize_t */
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,6 +9,7 @@
  */
 
 #include "ipc_protocol.h"
+#include "ipc_server.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <arpa/inet.h>
 
 #define IPC_DEFAULT_SOCKET_PATH "/tmp/beamline-gateway.sock"
 #define IPC_MAX_CONNECTIONS 64
@@ -38,7 +40,7 @@ typedef struct {
 /**
  * IPC server state
  */
-typedef struct {
+struct ipc_server_t {
     int listen_fd;
     char socket_path[256];
     ipc_client_t clients[IPC_MAX_CONNECTIONS];
@@ -47,7 +49,7 @@ typedef struct {
     /* Callback for handling messages */
     void (*message_handler)(const ipc_message_t *msg, ipc_message_t *response, void *user_data);
     void *user_data;
-} ipc_server_t;
+};
 
 /**
  * Create Unix domain socket
@@ -158,7 +160,7 @@ static int ipc_send_message(int fd, const ipc_message_t *msg) {
         return -1;
     }
 
-    ssize_t sent =send(fd, frame_buf, frame_size, 0);
+    ssize_t sent = send(fd, frame_buf, (size_t)frame_size, 0);
     if (sent != frame_size) {
         perror("send");
         return -1;
@@ -186,12 +188,14 @@ static void ipc_handle_client_data(ipc_server_t *server, int slot) {
         return;
     }
 
-    client->recv_len += n;
+    client->recv_len += (size_t)n;
 
     /* Try to parse frame */
     while (client->recv_len >= IPC_HEADER_SIZE) {
         /* Peek at frame length */
-        uint32_t frame_len = ntohl(*(uint32_t*)client->recv_buf);
+        uint32_t frame_len;
+        memcpy(&frame_len, client->recv_buf, sizeof(frame_len));
+        frame_len = ntohl(frame_len);
 
         if (frame_len > IPC_MAX_FRAME_SIZE) {
             fprintf(stderr, "[ipc_server] Frame too large: %u bytes\n", frame_len);
@@ -320,7 +324,7 @@ void ipc_server_run(ipc_server_t *server) {
         }
 
         /* Poll */
-        int ready = poll(fds, nfds, IPC_POLL_TIMEOUT_MS);
+        int ready = poll(fds, (nfds_t)nfds, IPC_POLL_TIMEOUT_MS);
         if (ready < 0) {
             if (errno == EINTR) {
                 continue;
