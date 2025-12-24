@@ -12,14 +12,19 @@ EXAMPLE_DIR = examples
 # Source files
 IPC_PROTOCOL_SRC = $(SRC_DIR)/ipc_protocol.c
 IPC_SERVER_SRC = $(SRC_DIR)/ipc_server.c
+IPC_NATS_BRIDGE_SRC = $(SRC_DIR)/ipc_nats_bridge.c
+NATS_CLIENT_STUB_SRC = $(SRC_DIR)/nats_client_stub.c
 
 # Object files
 IPC_PROTOCOL_OBJ = $(BUILD_DIR)/ipc_protocol.o
 IPC_SERVER_OBJ = $(BUILD_DIR)/ipc_server.o
+IPC_NATS_BRIDGE_OBJ = $(BUILD_DIR)/ipc_nats_bridge.o
+NATS_CLIENT_STUB_OBJ = $(BUILD_DIR)/nats_client_stub.o
 
 # Targets
 TEST_IPC_PROTOCOL = $(BUILD_DIR)/test_ipc_protocol
 IPC_SERVER_DEMO = $(BUILD_DIR)/ipc_server_demo
+IPC_NATS_DEMO = $(BUILD_DIR)/ipc_nats_demo
 
 .PHONY: all clean test demo
 
@@ -35,12 +40,24 @@ $(IPC_PROTOCOL_OBJ): $(IPC_PROTOCOL_SRC) include/ipc_protocol.h
 $(IPC_SERVER_OBJ): $(IPC_SERVER_SRC) include/ipc_server.h include/ipc_protocol.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Compile NATS bridge
+$(IPC_NATS_BRIDGE_OBJ): $(IPC_NATS_BRIDGE_SRC) include/ipc_nats_bridge.h include/ipc_protocol.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Compile NATS client stub
+$(NATS_CLIENT_STUB_OBJ): $(NATS_CLIENT_STUB_SRC) src/nats_client_stub.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
 # Build test
 $(TEST_IPC_PROTOCOL): $(TEST_DIR)/test_ipc_protocol.c $(IPC_PROTOCOL_OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-# Build demo
+# Build basic demo (no NATS)
 $(IPC_SERVER_DEMO): $(EXAMPLE_DIR)/ipc_server_demo.c $(IPC_PROTOCOL_OBJ) $(IPC_SERVER_OBJ)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+# Build NATS demo
+$(IPC_NATS_DEMO): $(EXAMPLE_DIR)/ipc_nats_demo.c $(IPC_PROTOCOL_OBJ) $(IPC_SERVER_OBJ) $(IPC_NATS_BRIDGE_OBJ) $(NATS_CLIENT_STUB_OBJ)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Run tests
@@ -48,24 +65,38 @@ test: $(TEST_IPC_PROTOCOL)
 	@echo "Running IPC protocol tests..."
 	@$(TEST_IPC_PROTOCOL)
 
-# Run demo (interactive, requires Ctrl+C to stop)
+# Run basic demo (no NATS, interactive)
 demo: $(IPC_SERVER_DEMO)
 	@echo "Starting IPC server demo..."
 	@echo "Press Ctrl+C to stop"
 	@$(IPC_SERVER_DEMO)
+
+# Run NATS demo in stub mode
+demo-nats: $(IPC_NATS_DEMO)
+	@echo "Starting IPC server with NATS bridge (STUB mode)..."
+	@echo "Press Ctrl+C to stop"
+	@$(IPC_NATS_DEMO)
 
 clean:
 	rm -rf $(BUILD_DIR)
 
 help:
 	@echo "IPC Gateway Build Targets:"
-	@echo "  make all     - Build all components"
-	@echo "  make test    - Build and run unit tests"
-	@echo "  make demo    - Build and run IPC server demo"
-	@echo "  make clean   - Remove build artifacts"
+	@echo "  make all        - Build all components"
+	@echo "  make test       - Build and run unit tests"
+	@echo "  make demo       - Build and run basic IPC server demo (no NATS)"
+	@echo "  make demo-nats  - Build and run IPC server with NATS bridge (stub mode)"
+	@echo "  make clean      - Remove build artifacts"
 	@echo ""
 	@echo "Usage:"
 	@echo "  1. Build: make all"
 	@echo "  2. Run tests: make test"
-	@echo "  3. Run demo: make demo (in terminal 1)"
-	@echo "  4. Test client: python3 tests/test_ipc_client.py (in terminal 2)"
+	@echo "  3. Run basic demo: make demo (in terminal 1)"
+	@echo "     Test: python3 tests/test_ipc_client.py (in terminal 2)"
+	@echo "  4. Run NATS demo (stub): make demo-nats (in terminal 1)"
+	@echo "     Test: python3 tests/test_ipc_client.py (in terminal 2)"
+	@echo "  5. Run NATS demo (real):"
+	@echo "     Terminal 1: nats-server -js"
+	@echo "     Terminal 2: python3 tests/mock_router.py"
+	@echo "     Terminal 3: ./build/ipc_nats_demo /tmp/beamline-gateway.sock 1"
+	@echo "     Terminal 4: python3 tests/test_ipc_client.py"
