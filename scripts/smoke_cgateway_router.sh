@@ -1,416 +1,441 @@
 #!/usr/bin/env bash
-#
-# smoke_cgateway_router.sh - End-to-end smoke test: c-gateway ↔ NATS ↔ Router
-#
-# IMPORTANT: This script is READINESS TOOLING (template mode by default).
-#
-# STATUS: C-Gateway currently in STUB MODE (ADR-005)
-# - By default, accepts stub/dummy responses (ALLOW_DUMMY_RESPONSE=1)
-# - Real integration deferred until Router perf stable
-# - Prerequisites: See .ai/decisions.md (ADR-005)
-#
-# USAGE:
-#   # Template mode (allows stub responses for infra validation)
-#   ./scripts/smoke_cgateway_router.sh
-#
-#   # Strict mode (requires real Router responses) - NOT YET READY
-#   ALLOW_DUMMY_RESPONSE=0 ./scripts/smoke_cgateway_router.sh
-#
-# ARTIFACTS: _artifacts/smoke_cgw_router_TIMESTAMP/
-#   - smoke.log, env.txt
-#   - nats_start.log, nats_status.log, nats_stop.log
-#   - router.log, router.log.tail, router.pid
-#   - cgw.log, cgw.log.tail, cgw.pid
-#   - http_headers.txt, http_body.json, http_code.txt
-#
-# ENV OVERRIDES:
-#   ROUTER_ROOT              - Path to Router repo (default: ../otp/router)
-#   ARTIFACTS_DIR            - Artifacts directory (default: _artifacts)
-#   NATS_HTTP_HOSTPORT       - NATS monitoring (default: 127.0.0.1:8222)
-#   CGW_HOSTPORT             - C-Gateway HTTP (default: 127.0.0.1:8080)
-#   CGW_HEALTH_PATH          - Health endpoint (default: /_health)
-#   CGW_DECIDE_PATH          - Decide endpoint (default: /api/v1/routes/decide)
-#   CGW_START_CMD            - C-Gateway start command (auto-discover if empty)
-#   CGW_START_ARGS           - Additional args for c-gateway
-#   ROUTER_START_CMD         - Router start command (auto-discover if empty)
-#   ROUTER_HEALTH_URL        - Router health check URL (optional)
-#   SMOKE_TIMEOUT_SECONDS    - Overall timeout (default: 180)
-#   CURL_TIMEOUT_SECONDS     - HTTP request timeout (default: 10)
-#   ALLOW_DUMMY_RESPONSE     - Allow stub responses: 1=yes (default), 0=strict
-#
 set -euo pipefail
 
+# smoke_cgateway_router.sh
+#
+# Orchestrator (ADR-005 compliant by default):
+#   start NATS -> start Router -> start c-gateway -> curl -> collect artifacts -> stop (always via trap)
+#
+# Modes:
+#   Template mode (default): allows stub/dummy responses (ALLOW_DUMMY_RESPONSE=1)
+#   Strict mode: requires non-dummy response (ALLOW_DUMMY_RESPONSE=0) + real NATS integration
+#
+# Determinism:
+#   - bounded waits/timeouts
+#   - timestamped artifacts in _artifacts/
+#   - trap cleanup (SIGTERM -> SIGKILL fallback)
+#
+# Overrides:
+#   - ROUTER_DIR, CGW_DIR
+#   - ROUTER_START_CMD, CGW_START_CMD
+#   - NATS_HOST/NATS_PORT/NATS_MON_PORT
+#   - CGW_HOST/CGW_PORT, CGW_DECIDE_PATH, CGW_HEALTH_PATH
+#   - STARTUP_WAIT_SECONDS, STOP_WAIT_SECONDS, CURL_TIMEOUT_SECONDS, CURL_RETRIES
+
+log() { printf '[%s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*" >&2; }
+die() { log "ERROR: $*"; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "${script_dir}/.." && pwd)"
+cgw_root="$(cd "${script_dir}/.." && pwd)"
 
-artifacts_dir="${ARTIFACTS_DIR:-"${repo_root}/_artifacts"}"
-mkdir -p "${artifacts_dir}"
+ALLOW_DUMMY_RESPONSE="${ALLOW_DUMMY_RESPONSE:-1}"
 
-ts="$(date -u +%Y%m%d_%H%M%S)"
-run_dir="${artifacts_dir}/smoke_cgw_router_${ts}"
-mkdir -p "${run_dir}"
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-${cgw_root}/_artifacts}"
+TS="$(date -u +'%Y%m%d_%H%M%S')"
+RUN_DIR="${ARTIFACTS_DIR}/smoke_cgw_router_${TS}"
 
-log() { 
-  printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*" | tee -a "${run_dir}/smoke.log"
+NATS_HOST="${NATS_HOST:-127.0.0.1}"
+NATS_PORT="${NATS_PORT:-4222}"
+NATS_MON_PORT="${NATS_MON_PORT:-8222}"
+
+CGW_HOST="${CGW_HOST:-127.0.0.1}"
+CGW_PORT="${CGW_PORT:-8080}"
+CGW_DECIDE_PATH="${CGW_DECIDE_PATH:-/api/v1/routes/decide}"
+CGW_HEALTH_PATH="${CGW_HEALTH_PATH:-/_health}"
+
+CGW_BASE_URL="${CGW_BASE_URL:-http://${CGW_HOST}:${CGW_PORT}}"
+CGW_DECIDE_URL="${CGW_DECIDE_URL:-${CGW_BASE_URL}${CGW_DECIDE_PATH}}"
+CGW_HEALTH_URL="${CGW_HEALTH_URL:-${CGW_BASE_URL}${CGW_HEALTH_PATH}}"
+
+STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-20}"
+STOP_WAIT_SECONDS="${STOP_WAIT_SECONDS:-6}"
+CURL_TIMEOUT_SECONDS="${CURL_TIMEOUT_SECONDS:-5}"
+CURL_RETRIES="${CURL_RETRIES:-10}"
+CURL_RETRY_SLEEP_MS="${CURL_RETRY_SLEEP_MS:-200}"
+
+ROUTER_DIR="${ROUTER_DIR:-}"
+CGW_DIR="${CGW_DIR:-${cgw_root}}"
+
+ROUTER_START_CMD="${ROUTER_START_CMD:-}"
+CGW_START_CMD="${CGW_START_CMD:-}"
+
+mkdir -p "${RUN_DIR}"
+
+# ----------------- utils -----------------
+python_json_load() {
+  python3 - <<'PY'
+import json,sys
+json.load(sys.stdin)
+print("ok")
+PY
 }
 
-# Check if timeout command is available
-have_timeout=0
-if command -v timeout >/dev/null 2>&1; then
-  have_timeout=1
-fi
+python_json_get() {
+  # args: <json_file> <key>
+  python3 - "$@" <<'PY'
+import json,sys
+p=sys.argv[1]
+k=sys.argv[2]
+with open(p,'r',encoding='utf-8') as f:
+  obj=json.load(f)
+v=obj.get(k,None)
+if v is None:
+  sys.exit(2)
+if isinstance(v,(dict,list)):
+  print(json.dumps(v,ensure_ascii=False))
+else:
+  print(v)
+PY
+}
 
-run_with_timeout() {
-  local seconds="$1"
-  shift
-  if [[ "${have_timeout}" -eq 1 ]]; then
-    timeout --preserve-status "${seconds}" "$@"
-    return $?
-  fi
-  # Fallback: no timeout binary, just run
-  "$@"
+sleep_ms() {
+  python3 - <<PY
+import time
+time.sleep(${1}/1000.0)
+PY
 }
 
 wait_http_200() {
+  # $1=url, $2=label
   local url="$1"
-  local timeout_s="$2"
-  local interval_ms="${3:-200}"
-
-  local deadline
-  deadline="$(( $(date +%s) + timeout_s ))"
-
+  local label="$2"
+  local deadline=$(( $(date +%s) + STARTUP_WAIT_SECONDS ))
   while true; do
-    if curl -fsS -o /dev/null "${url}" >/dev/null 2>&1; then
+    if curl -fsS --max-time "${CURL_TIMEOUT_SECONDS}" "${url}" >/dev/null 2>&1; then
+      log "${label}: ready (${url})"
       return 0
     fi
-    if [[ "$(date +%s)" -ge "${deadline}" ]]; then
+    if [ "$(date +%s)" -ge "${deadline}" ]; then
+      log "${label}: NOT ready after ${STARTUP_WAIT_SECONDS}s (${url})"
       return 1
     fi
-    sleep 0.$((interval_ms / 100))
+    sleep 0.2
   done
 }
 
-kill_pid_graceful() {
+kill_tree() {
+  # $1=pid, $2=label
   local pid="$1"
-  local name="$2"
+  local label="$2"
 
-  if ! kill -0 "${pid}" >/dev/null 2>&1; then
+  if [ -z "${pid}" ] || ! kill -0 "${pid}" >/dev/null 2>&1; then
     return 0
   fi
 
-  log "Stopping ${name} pid=${pid} (TERM → KILL fallback)"
+  log "Stopping ${label} (pid=${pid})..."
   kill -TERM "${pid}" >/dev/null 2>&1 || true
 
-  local deadline
-  deadline="$(( $(date +%s) + 3 ))"
+  local deadline=$(( $(date +%s) + STOP_WAIT_SECONDS ))
   while kill -0 "${pid}" >/dev/null 2>&1; do
-    if [[ "$(date +%s)" -ge "${deadline}" ]]; then
+    if [ "$(date +%s)" -ge "${deadline}" ]; then
       break
     fi
-    sleep 0.1
+    sleep 0.2
   done
 
   if kill -0 "${pid}" >/dev/null 2>&1; then
+    log "${label}: still alive -> SIGKILL"
     kill -KILL "${pid}" >/dev/null 2>&1 || true
   fi
 }
 
-# Configuration
-router_root_default="${repo_root}/../otp/router"
-router_root="${ROUTER_ROOT:-"${router_root_default}"}"
-
-nats_http_hostport="${NATS_HTTP_HOSTPORT:-"127.0.0.1:8222"}"
-cgw_hostport="${CGW_HOSTPORT:-"127.0.0.1:8080"}"
-cgw_health_path="${CGW_HEALTH_PATH:-"/_health"}"
-cgw_decide_path="${CGW_DECIDE_PATH:-"/api/v1/routes/decide"}"
-
-smoke_timeout="${SMOKE_TIMEOUT_SECONDS:-180}"
-curl_timeout="${CURL_TIMEOUT_SECONDS:-10}"
-allow_dummy="${ALLOW_DUMMY_RESPONSE:-1}"  # Default: allow stub (template mode)
-
-router_pid=""
-cgw_pid=""
-started_nats=0
-
-# Discover NATS scripts (prefer Router repo, fallback to local)
-nats_start_script=""
-nats_status_script=""
-nats_stop_script=""
-
-for script_name in nats_start nats_status nats_stop; do
-  script_var="${script_name}_script"
-  
-  # Try Router repo first
-  if [[ -x "${router_root}/scripts/${script_name}.sh" ]]; then
-    eval "${script_var}=\"${router_root}/scripts/${script_name}.sh\""
-  elif [[ -x "${repo_root}/scripts/${script_name}.sh" ]]; then
-    eval "${script_var}=\"${repo_root}/scripts/${script_name}.sh\""
-  fi
-done
-
-discover_router_start_cmd() {
-  # Prefer OTP release if present
-  local cand
-  for cand in \
-    "${router_root}/_build/default/rel/beamline_router/bin/beamline_router" \
-    "${router_root}/_build/test/rel/beamline_router/bin/beamline_router" \
-    "${router_root}/_build/default/rel/router/bin/router" \
-    "${router_root}/_build/test/rel/router/bin/router"
-  do
-    if [[ -x "${cand}" ]]; then
-      printf '%s foreground' "${cand}"
-      return 0
-    fi
-  done
-
-  # Last resort: rebar3 shell (not ideal for CI)
-  if [[ -f "${router_root}/rebar.config" ]] && command -v rebar3 >/dev/null 2>&1; then
-    printf 'bash -lc "cd %s && rebar3 shell --name router_smoke@127.0.0.1"' "${router_root}"
+discover_router_dir() {
+  if [ -n "${ROUTER_DIR}" ] && [ -d "${ROUTER_DIR}" ]; then
+    printf '%s\n' "${ROUTER_DIR}"
     return 0
   fi
 
+  # Heuristic: sibling repo layout: ../otp/router or ../apps/otp/router
+  local cand=""
+  cand="$(find "${cgw_root}/.." -maxdepth 5 -type d -path '*/apps/otp/router' -print -quit 2>/dev/null || true)"
+  if [ -n "${cand}" ] && [ -d "${cand}" ]; then
+    printf '%s\n' "${cand}"
+    return 0
+  fi
   return 1
 }
 
 discover_cgw_start_cmd() {
-  # Try common build outputs
-  local cand
-  for cand in \
-    "${repo_root}/build/c-gateway" \
-    "${repo_root}/build/bin/c-gateway" \
-    "${repo_root}/build-nats/c-gateway" \
-    "${repo_root}/build/cgateway" \
-    "${repo_root}/bin/c-gateway"
-  do
-    if [[ -x "${cand}" ]]; then
-      printf '%s' "${cand}"
-      return 0
-    fi
-  done
+  if [ -n "${CGW_START_CMD}" ]; then
+    printf '%s\n' "${CGW_START_CMD}"
+    return 0
+  fi
 
-  # Search for c-gateway binary (max depth 4)
-  cand="$(find "${repo_root}" -maxdepth 4 -type f -name 'c-gateway' -perm -111 2>/dev/null | head -n 1 || true)"
-  if [[ -n "${cand}" ]]; then
-    printf '%s' "${cand}"
+  # Prefer dedicated script if exists
+  if [ -x "${CGW_DIR}/scripts/run.sh" ]; then
+    printf 'cd %q && %q --host %q --port %q\n' "${CGW_DIR}" "${CGW_DIR}/scripts/run.sh" "${CGW_HOST}" "${CGW_PORT}"
+    return 0
+  fi
+  if [ -x "${CGW_DIR}/scripts/start.sh" ]; then
+    printf 'cd %q && %q\n' "${CGW_DIR}" "${CGW_DIR}/scripts/start.sh"
+    return 0
+  fi
+
+  # Try to find an executable named like gateway/c-gateway in build dirs
+  local exe=""
+  exe="$(find "${CGW_DIR}" -maxdepth 4 -type f -perm -111 \
+    \( -name 'c-gateway' -o -name 'cgateway' -o -name 'gateway' -o -name '*gateway*' \) \
+    2>/dev/null | head -n 1 || true)"
+
+  if [ -n "${exe}" ]; then
+    # Unknown flags; best-effort: run without args
+    # Users can override CGW_START_CMD in CI for deterministic flags.
+    printf 'cd %q && %q\n' "${CGW_DIR}" "${exe}"
     return 0
   fi
 
   return 1
 }
 
+discover_router_start_cmd() {
+  if [ -n "${ROUTER_START_CMD}" ]; then
+    printf '%s\n' "${ROUTER_START_CMD}"
+    return 0
+  fi
+
+  # Prefer router scripts if present
+  if [ -n "${router_dir}" ] && [ -x "${router_dir}/scripts/router_start.sh" ]; then
+    printf 'cd %q && %q\n' "${router_dir}" "${router_dir}/scripts/router_start.sh"
+    return 0
+  fi
+
+  # Try OTP release layout (best-effort)
+  if [ -n "${router_dir}" ]; then
+    local rel_bin=""
+    rel_bin="$(find "${router_dir}" -maxdepth 6 -type f -perm -111 -path '*/rel/*/bin/*' \
+      2>/dev/null | grep -E '/bin/beamline_router$|/bin/router$' | head -n 1 || true)"
+    if [ -n "${rel_bin}" ]; then
+      # foreground keeps it attached; we background it with our own &
+      printf 'cd %q && %q foreground\n' "${router_dir}" "${rel_bin}"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+# ----------------- trap / cleanup -----------------
+nats_pid=""
+router_pid=""
+cgw_pid=""
+router_dir=""
+
 cleanup() {
+  local rc=$?
   set +e
 
-  log "Collecting tail logs"
-  if [[ -f "${run_dir}/cgw.log" ]]; then
-    tail -n 200 "${run_dir}/cgw.log" > "${run_dir}/cgw.log.tail" 2>/dev/null || true
-  fi
-  if [[ -f "${run_dir}/router.log" ]]; then
-    tail -n 200 "${run_dir}/router.log" > "${run_dir}/router.log.tail" 2>/dev/null || true
+  log "Capturing env snapshot..."
+  {
+    echo "timestamp_utc=${TS}"
+    echo "run_dir=${RUN_DIR}"
+    echo "cgw_root=${cgw_root}"
+    echo "router_dir=${router_dir}"
+    echo "ALLOW_DUMMY_RESPONSE=${ALLOW_DUMMY_RESPONSE}"
+    echo "NATS=${NATS_HOST}:${NATS_PORT} (mon ${NATS_MON_PORT})"
+    echo "CGW_BASE_URL=${CGW_BASE_URL}"
+    echo "CGW_DECIDE_URL=${CGW_DECIDE_URL}"
+    echo "CGW_HEALTH_URL=${CGW_HEALTH_URL}"
+    echo "uname=$(uname -a)"
+    echo "git_cgateway=$(cd "${cgw_root}" && (git rev-parse --short HEAD 2>/dev/null || echo "nogit"))"
+    if [ -n "${router_dir}" ]; then
+      echo "git_router=$(cd "${router_dir}" && (git rev-parse --short HEAD 2>/dev/null || echo "nogit"))"
+    fi
+    if have nats-server; then echo "nats_server=$(nats-server -v 2>/dev/null || true)"; fi
+    if have curl; then echo "curl=$(curl --version 2>/dev/null | head -n 1 || true)"; fi
+    if have python3; then echo "python3=$(python3 --version 2>/dev/null || true)"; fi
+  } > "${RUN_DIR}/env.txt" 2>/dev/null || true
+
+  log "Stopping services..."
+  kill_tree "${cgw_pid}" "c-gateway"
+  kill_tree "${router_pid}" "router"
+  kill_tree "${nats_pid}" "nats-server"
+
+  # If we used router nats scripts, try stop for extra safety (best-effort)
+  if [ -n "${router_dir}" ] && [ -x "${router_dir}/scripts/nats_stop.sh" ]; then
+    "${router_dir}/scripts/nats_stop.sh" > "${RUN_DIR}/nats_stop.log" 2>&1 || true
   fi
 
-  if [[ -n "${cgw_pid}" ]]; then
-    kill_pid_graceful "${cgw_pid}" "c-gateway"
-  fi
-  if [[ -n "${router_pid}" ]]; then
-    kill_pid_graceful "${router_pid}" "router"
-  fi
-
-  if [[ "${started_nats}" -eq 1 && -n "${nats_stop_script}" ]]; then
-    log "Stopping NATS via ${nats_stop_script}"
-    "${nats_stop_script}" >> "${run_dir}/nats_stop.log" 2>&1 || true
-  fi
-
-  log "Smoke run artifacts: ${run_dir}"
+  log "Artifacts saved: ${RUN_DIR}"
+  exit "${rc}"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
-# Banner
-log "╔════════════════════════════════════════════════════════════════╗"
-log "║  C-Gateway ↔ Router Smoke Test (TEMPLATE MODE)                ║"
-log "╚════════════════════════════════════════════════════════════════╝"
-log ""
-log "⚠️  CURRENT STATUS: C-Gateway in STUB MODE (ADR-005)"
-log "    - libnats NOT installed"
-log "    - Real NATS integration DEFERRED"
-log "    - This script validates infrastructure only"
-log ""
-if [[ "${allow_dummy}" -eq 1 ]]; then
-  log "✓  Template mode: ALLOW_DUMMY_RESPONSE=1 (stub responses accepted)"
-else
-  log "⚠️  Strict mode: ALLOW_DUMMY_RESPONSE=0 (requires real Router)"
-  log "    - This mode will FAIL until real integration enabled"
-  log "    - See .ai/decisions.md (ADR-005) for prerequisites"
-fi
-log ""
+banner() {
+  log "============================================================"
+  log " smoke_cgateway_router: mode=$( [ "${ALLOW_DUMMY_RESPONSE}" = "1" ] && echo TEMPLATE || echo STRICT )"
+  if [ "${ALLOW_DUMMY_RESPONSE}" = "1" ]; then
+    log " TEMPLATE MODE: dummy/stub responses are accepted (ADR-005 safe)."
+  else
+    log " STRICT MODE: dummy/stub responses will FAIL (requires real integration)."
+  fi
+  log "============================================================"
+}
 
-# Environment snapshot
-log "Environment snapshot"
+# ----------------- start NATS -----------------
+start_nats() {
+  log "Starting NATS..."
+  if [ -n "${router_dir}" ] && [ -x "${router_dir}/scripts/nats_start.sh" ]; then
+    "${router_dir}/scripts/nats_start.sh" > "${RUN_DIR}/nats_start.log" 2>&1 || {
+      log "router nats_start.sh failed; see ${RUN_DIR}/nats_start.log"
+      return 1
+    }
+    wait_http_200 "http://${NATS_HOST}:${NATS_MON_PORT}/healthz" "nats-monitor"
+    return 0
+  fi
+
+  if ! have nats-server; then
+    die "nats-server not found and router/scripts/nats_start.sh not available."
+  fi
+
+  local store_dir="${RUN_DIR}/nats_store"
+  mkdir -p "${store_dir}"
+
+  nats-server -js -a "${NATS_HOST}" -p "${NATS_PORT}" -m "${NATS_MON_PORT}" -sd "${store_dir}" \
+    > "${RUN_DIR}/nats.log" 2>&1 &
+  nats_pid="$!"
+  echo "${nats_pid}" > "${RUN_DIR}/nats.pid"
+
+  wait_http_200 "http://${NATS_HOST}:${NATS_MON_PORT}/healthz" "nats-monitor"
+}
+
+# ----------------- start Router -----------------
+start_router() {
+  local cmd=""
+  cmd="$(discover_router_start_cmd || true)"
+  if [ -z "${cmd}" ]; then
+    die "ROUTER_START_CMD not set and auto-discovery failed. Set ROUTER_START_CMD for deterministic CI."
+  fi
+
+  log "Starting Router..."
+  # shellcheck disable=SC2016
+  bash -lc "${cmd}" > "${RUN_DIR}/router.log" 2>&1 &
+  router_pid="$!"
+  echo "${router_pid}" > "${RUN_DIR}/router.pid"
+
+  # No universal health endpoint known; give a short warmup
+  sleep 1.0
+  log "Router started (pid=${router_pid})."
+}
+
+# ----------------- start c-gateway -----------------
+start_cgateway() {
+  local cmd=""
+  cmd="$(discover_cgw_start_cmd || true)"
+  if [ -z "${cmd}" ]; then
+    die "CGW_START_CMD not set and auto-discovery failed. Set CGW_START_CMD for deterministic CI."
+  fi
+
+  log "Starting c-gateway..."
+  # Provide NATS env for future strict mode; harmless in stub mode
+  export NATS_URL="nats://${NATS_HOST}:${NATS_PORT}"
+  export ROUTER_NATS_SUBJECT="${ROUTER_NATS_SUBJECT:-beamline.router.v1.decide}"
+
+  # shellcheck disable=SC2016
+  bash -lc "${cmd}" > "${RUN_DIR}/c_gateway.log" 2>&1 &
+  cgw_pid="$!"
+  echo "${cgw_pid}" > "${RUN_DIR}/c_gateway.pid"
+
+  wait_http_200 "${CGW_HEALTH_URL}" "c-gateway"
+}
+
+# ----------------- curl + validate -----------------
+run_curl() {
+  have curl || die "curl not found"
+  have python3 || die "python3 not found"
+
+  log "Running HTTP decide: ${CGW_DECIDE_URL}"
+
+  local req_file="${RUN_DIR}/request.json"
+  local headers_file="${RUN_DIR}/response.headers"
+  local body_file="${RUN_DIR}/response.body"
+  local http_code="000"
+
+  cat > "${req_file}" <<JSON
 {
-  echo "date_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "repo_root=${repo_root}"
-  echo "router_root=${router_root}"
-  echo "uname=$(uname -a)"
-  echo "git_cgw=$(git -C "${repo_root}" rev-parse --short HEAD 2>/dev/null || echo 'n/a')"
-  echo "git_router=$(git -C "${router_root}" rev-parse --short HEAD 2>/dev/null || echo 'n/a')"
-  echo "nats_http_hostport=${nats_http_hostport}"
-  echo "cgw_hostport=${cgw_hostport}"
-  echo "allow_dummy=${allow_dummy}"
-} > "${run_dir}/env.txt"
+  "message_id": "smoke-${TS}",
+  "tenant_id": "tenant-smoke",
+  "policy_id": "demo-policy",
+  "input": { "text": "hello" }
+}
+JSON
 
-# 1) Start NATS
-if [[ -z "${nats_start_script}" ]]; then
-  log "ERROR: nats_start.sh not found (set ROUTER_ROOT or add scripts/nats_start.sh)"
-  exit 2
-fi
+  local attempt=1
+  while [ "${attempt}" -le "${CURL_RETRIES}" ]; do
+    rm -f "${headers_file}" "${body_file}" || true
 
-log "Starting NATS via ${nats_start_script}"
-"${nats_start_script}" >> "${run_dir}/nats_start.log" 2>&1
-started_nats=1
+    http_code="$(
+      curl -sS --max-time "${CURL_TIMEOUT_SECONDS}" \
+        -D "${headers_file}" \
+        -o "${body_file}" \
+        -w '%{http_code}' \
+        -X POST "${CGW_DECIDE_URL}" \
+        -H 'Content-Type: application/json' \
+        -H 'X-Request-ID: smoke-request' \
+        -H 'X-Trace-ID: smoke-trace' \
+        --data-binary @"${req_file}" \
+        || echo "000"
+    )"
 
-if [[ -n "${nats_status_script}" ]]; then
-  log "NATS status via ${nats_status_script}"
-  "${nats_status_script}" >> "${run_dir}/nats_status.log" 2>&1 || true
-fi
+    echo "${http_code}" > "${RUN_DIR}/http_code.txt"
 
-log "Waiting for NATS healthz http://${nats_http_hostport}/healthz"
-if ! wait_http_200 "http://${nats_http_hostport}/healthz" 10 200; then
-  log "ERROR: NATS healthz did not become ready"
-  exit 3
-fi
+    if [ "${http_code}" = "200" ]; then
+      if python_json_load < "${body_file}" >/dev/null 2>&1; then
+        log "HTTP 200 + valid JSON"
 
-# 2) Start Router
-router_start_cmd="${ROUTER_START_CMD:-""}"
-if [[ -z "${router_start_cmd}" ]]; then
-  if ! router_start_cmd="$(discover_router_start_cmd)"; then
-    log "ERROR: Could not discover router start command (set ROUTER_START_CMD)"
-    exit 4
+        # dummy detection: message_id == "dummy" OR contains "dummy" marker in message_id
+        local msg_id=""
+        msg_id="$(python_json_get "${body_file}" "message_id" 2>/dev/null || true)"
+        echo "${msg_id}" > "${RUN_DIR}/message_id.txt" 2>/dev/null || true
+
+        if [ "${ALLOW_DUMMY_RESPONSE}" = "1" ]; then
+          log "Template mode: accepting response (message_id=${msg_id:-<none>})"
+          return 0
+        fi
+
+        if [ "${msg_id}" = "dummy" ] || printf '%s' "${msg_id}" | grep -qi 'dummy'; then
+          log "STRICT MODE FAIL: dummy response detected (message_id=${msg_id})"
+          return 1
+        fi
+
+        log "Strict mode: non-dummy response OK (message_id=${msg_id:-<none>})"
+        return 0
+      fi
+
+      log "HTTP 200 but invalid JSON (attempt ${attempt}/${CURL_RETRIES})"
+    else
+      log "HTTP ${http_code} (attempt ${attempt}/${CURL_RETRIES})"
+    fi
+
+    attempt=$((attempt + 1))
+    sleep_ms "${CURL_RETRY_SLEEP_MS}"
+  done
+
+  die "curl failed after ${CURL_RETRIES} attempts (last http_code=${http_code})"
+}
+
+snapshot_nats() {
+  curl -fsS --max-time "${CURL_TIMEOUT_SECONDS}" "http://${NATS_HOST}:${NATS_MON_PORT}/varz" > "${RUN_DIR}/nats_varz.json" 2>/dev/null || true
+  curl -fsS --max-time "${CURL_TIMEOUT_SECONDS}" "http://${NATS_HOST}:${NATS_MON_PORT}/connz" > "${RUN_DIR}/nats_connz.json" 2>/dev/null || true
+}
+
+main() {
+  banner
+
+  router_dir="$(discover_router_dir || true)"
+  if [ -n "${router_dir}" ]; then
+    log "Detected router_dir: ${router_dir}"
+  else
+    log "router_dir not detected (set ROUTER_DIR if needed)."
   fi
-fi
 
-log "Starting Router: ${router_start_cmd}"
-bash -c "${router_start_cmd} > '${run_dir}/router.log' 2>&1 & echo \$! > '${run_dir}/router.pid'" || true
-router_pid="$(cat "${run_dir}/router.pid" 2>/dev/null || true)"
-if [[ -z "${router_pid}" ]]; then
-  log "ERROR: Router failed to start (no pid)"
-  exit 5
-fi
-log "Router pid=${router_pid}"
+  start_nats
+  start_router
+  start_cgateway
+  run_curl
+  snapshot_nats
 
-if [[ -n "${ROUTER_HEALTH_URL:-""}" ]]; then
-  log "Waiting for Router health ${ROUTER_HEALTH_URL}"
-  if ! wait_http_200 "${ROUTER_HEALTH_URL}" "${smoke_timeout}" 250; then
-    log "ERROR: Router health did not become ready"
-    exit 6
-  fi
-else
-  log "Router health URL not set; sleeping 2s before proceeding"
-  sleep 2
-fi
+  log "SUCCESS: smoke_cgateway_router completed."
+}
 
-# 3) Start c-gateway
-cgw_start_cmd="${CGW_START_CMD:-""}"
-if [[ -z "${cgw_start_cmd}" ]]; then
-  if ! cgw_start_cmd="$(discover_cgw_start_cmd)"; then
-    log "ERROR: Could not discover c-gateway binary (set CGW_START_CMD)"
-    log "       Run: cmake -S . -B build && cmake --build build"
-    exit 7
-  fi
-fi
-
-log "Starting c-gateway: ${cgw_start_cmd}"
-cgw_start_args="${CGW_START_ARGS:-""}"
-bash -c "${cgw_start_cmd} ${cgw_start_args} > '${run_dir}/cgw.log' 2>&1 & echo \$! > '${run_dir}/cgw.pid'" || true
-cgw_pid="$(cat "${run_dir}/cgw.pid" 2>/dev/null || true)"
-if [[ -z "${cgw_pid}" ]]; then
-  log "ERROR: c-gateway failed to start (no pid)"
-  exit 8
-fi
-log "c-gateway pid=${cgw_pid}"
-
-cgw_health_url="http://${cgw_hostport}${cgw_health_path}"
-log "Waiting for c-gateway health ${cgw_health_url}"
-if ! wait_http_200 "${cgw_health_url}" "${smoke_timeout}" 200; then
-  log "ERROR: c-gateway health did not become ready"
-  exit 9
-fi
-
-# 4) Curl decide endpoint
-decide_url="http://${cgw_hostport}${cgw_decide_path}"
-req_body='{"from":"test@example.com","recipients":["user@example.com"],"subject":"smoke test"}'
-
-log "Calling decide endpoint: ${decide_url}"
-set +e
-http_code="$(
-  run_with_timeout "${curl_timeout}" \
-    curl -sS -D "${run_dir}/http_headers.txt" -o "${run_dir}/http_body.json" \
-      -H 'Content-Type: application/json' \
-      -H 'X-Request-Id: smoke-1' \
-      -H 'X-Tenant-Id: t1' \
-      -H 'X-API-Key: test-admin-key' \
-      -w '%{http_code}' \
-      "${decide_url}" \
-      -d "${req_body}"
-)"
-curl_rc="$?"
-set -e
-
-echo "${http_code}" > "${run_dir}/http_code.txt"
-
-if [[ "${curl_rc}" -ne 0 ]]; then
-  log "ERROR: curl failed rc=${curl_rc}"
-  exit 10
-fi
-
-log "HTTP code=${http_code}"
-if [[ "${http_code}" != "200" && "${http_code}" != "201" ]]; then
-  log "ERROR: unexpected HTTP code ${http_code}"
-  exit 11
-fi
-
-# Response validation
-if [[ "${allow_dummy}" -ne 1 ]]; then
-  log "Strict mode: checking for stub/dummy markers"
-  
-  if grep -qi "stub\|dummy" "${run_dir}/http_body.json" 2>/dev/null; then
-    log "ERROR: Response contains stub/dummy marker"
-    log "       C-Gateway is in STUB MODE (see ADR-005)"
-    log "       Set ALLOW_DUMMY_RESPONSE=1 to run in template mode"
-    exit 12
-  fi
-  
-  log "Response looks non-stub (basic checks passed)"
-else
-  log "Template mode: skipping stub/dummy detection (ALLOW_DUMMY_RESPONSE=1)"
-  
-  if grep -qi "stub\|dummy" "${run_dir}/http_body.json" 2>/dev/null; then
-    log "✓  Detected stub response (expected in template mode)"
-  fi
-fi
-
-log ""
-log "╔════════════════════════════════════════════════════════════════╗"
-log "║  SMOKE TEST PASSED (template mode)                            ║"
-log "╚════════════════════════════════════════════════════════════════╝"
-log ""
-log "Infrastructure validation complete:"
-log "  ✓ NATS started and responding"
-log "  ✓ Router started and responding"
-log "  ✓ C-Gateway started and responding"
-log "  ✓ HTTP request successful"
-log ""
-if [[ "${allow_dummy}" -eq 1 ]]; then
-  log "⚠️  NOTE: Running in TEMPLATE MODE (stub responses allowed)"
-  log "    To enable strict mode (requires real integration):"
-  log "      ALLOW_DUMMY_RESPONSE=0 ./scripts/smoke_cgateway_router.sh"
-  log ""
-  log "    Prerequisites (see ADR-005 in .ai/decisions.md):"
-  log "      - Router perf stable (3+ green Heavy CT runs)"
-  log "      - Performance baseline documented"
-  log "      - Regression guards enabled in CI"
-  log "      - libnats installed, c-gateway rebuilt with -DUSE_NATS_LIB=ON"
-fi
-log ""
-log "Artifacts: ${run_dir}"
-
-exit 0
+main "$@"

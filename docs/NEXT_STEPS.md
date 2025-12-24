@@ -19,30 +19,20 @@
 
 ## ✅ What IS Available Right Now
 
-### Readiness Tooling: Smoke Test (Template Mode)
+### Smoke readiness tooling (c-gateway ↔ Router)
 
-**Script**: `scripts/smoke_cgateway_router.sh`
+Есть канонический smoke orchestrator:
 
-Even though c-gateway is in stub mode, the smoke test script exists as **readiness tooling**:
+- `scripts/smoke_cgateway_router.sh`
 
-```bash
-# Template mode (validates infrastructure, allows stub responses)
-./scripts/smoke_cgateway_router.sh
+Режимы:
+- Template mode (default): `ALLOW_DUMMY_RESPONSE=1` — ADR-005 safe, допускает stub.
+- Strict mode: `ALLOW_DUMMY_RESPONSE=0` — требует реальной интеграции.
 
-# This checks:
-# ✓ NATS starts and responds
-# ✓ Router starts and responds  
-# ✓ C-Gateway starts and health endpoint works
-# ✓ HTTP request to /api/v1/routes/decide returns 200
-# ⚠️ Accepts stub responses (expected until integration enabled)
-```
+Артефакты пишутся в:
+- `_artifacts/smoke_cgw_router_<timestamp>/`
 
-**Purpose**:
-- Validate infrastructure setup
-- Catch deployment/configuration issues early
-- Ready to switch to strict mode when prerequisites met
-
-**See**: `docs/SMOKE_TEST.md` for full documentation
+**См.**: `docs/SMOKE_TEST.md` для полной документации.
 
 ---
 
