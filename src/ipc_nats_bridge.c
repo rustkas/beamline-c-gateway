@@ -3,6 +3,7 @@
  */
 
 #include "ipc_nats_bridge.h"
+#include "router_contract.h"
 #include "nats_client_stub.h"  /* For nats_request_decide */
 #include <stdio.h>
 #include <stdlib.h>

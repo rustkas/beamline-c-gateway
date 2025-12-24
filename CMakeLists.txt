@@ -535,3 +535,12 @@ if(BUILD_IPC_GATEWAY)
 else()
     message(STATUS "IPC Gateway: DISABLED (use -DBUILD_IPC_GATEWAY=ON to enable)")
 endif()
+
+# Router Contract library
+add_library(router-contract STATIC
+    src/router_contract.c
+)
+target_include_directories(router-contract PUBLIC include)
+
+# Link router-contract to ipc-nats-bridge
+target_link_libraries(ipc-nats-bridge PUBLIC router-contract)
