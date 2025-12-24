@@ -431,6 +431,15 @@ if(BUILD_IPC_GATEWAY)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
     
+    # IPC Config library
+    add_library(ipc-config STATIC
+        src/ipc_config.c
+    )
+    
+    target_include_directories(ipc-config PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    
     # IPC Server library
     add_library(ipc-server STATIC
         src/ipc_server.c
@@ -470,6 +479,17 @@ if(BUILD_IPC_GATEWAY)
     
     add_test(NAME ipc_protocol_test COMMAND ipc-protocol-test)
     
+    # IPC Config Unit Tests
+    add_executable(ipc-config-test
+        tests/test_ipc_config.c
+    )
+    
+    target_link_libraries(ipc-config-test PRIVATE
+        ipc-config
+    )
+    
+    add_test(NAME ipc_config_test COMMAND ipc-config-test)
+    
     # IPC Server Demo (basic, no NATS)
     add_executable(ipc-server-demo
         examples/ipc_server_demo.c
@@ -492,7 +512,7 @@ if(BUILD_IPC_GATEWAY)
     )
     
     # Install targets
-    install(TARGETS ipc-protocol ipc-server ipc-nats-bridge
+    install(TARGETS ipc-protocol ipc-config ipc-server ipc-nats-bridge
         ARCHIVE DESTINATION lib
     )
     
@@ -502,14 +522,15 @@ if(BUILD_IPC_GATEWAY)
     
     install(FILES
         include/ipc_protocol.h
+        include/ipc_config.h
         include/ipc_server.h
         include/ipc_nats_bridge.h
         DESTINATION include/c-gateway
     )
     
     message(STATUS "IPC Gateway targets added:")
-    message(STATUS "  Libraries: ipc-protocol, ipc-server, ipc-nats-bridge")
-    message(STATUS "  Tests: ipc-protocol-test")
+    message(STATUS "  Libraries: ipc-protocol, ipc-config, ipc-server, ipc-nats-bridge")
+    message(STATUS "  Tests: ipc-protocol-test, ipc-config-test")
     message(STATUS "  Demos: ipc-server-demo, ipc-nats-demo")
 else()
     message(STATUS "IPC Gateway: DISABLED (use -DBUILD_IPC_GATEWAY=ON to enable)")
