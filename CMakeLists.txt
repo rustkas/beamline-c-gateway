@@ -609,3 +609,8 @@ target_include_directories(nats-subjects PUBLIC include)
 add_executable(test-nats-subjects tests/test_nats_subjects.c)
 target_link_libraries(test-nats-subjects PRIVATE nats-subjects)
 add_test(NAME nats_subjects_test COMMAND test-nats-subjects)
+
+# Task cancel test  
+add_executable(test-task-cancel tests/test_task_cancel.c)
+target_link_libraries(test-task-cancel PRIVATE ipc-protocol)
+add_test(NAME task_cancel_test COMMAND test-task-cancel)
