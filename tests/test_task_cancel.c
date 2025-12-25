@@ -12,7 +12,7 @@ static void test_cancel_message(void) {
     
     ipc_message_t msg = {
         .type = IPC_MSG_TASK_CANCEL,
-        .payload = "{\"task_id\":\"task_123\"}",
+        .payload = (char*)"{\"task_id\":\"task_123\"}",
         .payload_len = 23
     };
     
