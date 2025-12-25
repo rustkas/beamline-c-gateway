@@ -642,3 +642,13 @@ target_link_libraries(prometheus-exporter PRIVATE pthread m)
 add_executable(test-prometheus-exporter tests/test_prometheus_exporter.c)
 target_link_libraries(test-prometheus-exporter PRIVATE prometheus-exporter)
 add_test(NAME prometheus_exporter_test COMMAND test-prometheus-exporter)
+
+# Health Check library
+add_library(health-check STATIC src/health_check.c)
+target_include_directories(health-check PUBLIC include)
+target_link_libraries(health-check PRIVATE pthread)
+
+# Health Check test
+add_executable(test-health-check tests/test_health_check.c)
+target_link_libraries(test-health-check PRIVATE health-check)
+add_test(NAME health_check_test COMMAND test-health-check)
