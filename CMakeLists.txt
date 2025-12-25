@@ -600,3 +600,12 @@ add_test(NAME json_validator_test COMMAND json-validator-test)
 # Fuzz test
 add_executable(fuzz-ipc-protocol tests/fuzz_ipc_protocol.c)
 target_link_libraries(fuzz-ipc-protocol PRIVATE ipc-protocol)
+
+# NATS Subjects library
+add_library(nats-subjects STATIC src/nats_subjects.c)
+target_include_directories(nats-subjects PUBLIC include)
+
+# NATS Subjects test
+add_executable(test-nats-subjects tests/test_nats_subjects.c)
+target_link_libraries(test-nats-subjects PRIVATE nats-subjects)
+add_test(NAME nats_subjects_test COMMAND test-nats-subjects)
