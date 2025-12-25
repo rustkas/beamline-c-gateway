@@ -579,3 +579,11 @@ target_include_directories(ipc-backpressure PUBLIC include)
 add_executable(ipc-backpressure-test tests/test_ipc_backpressure.c)
 target_link_libraries(ipc-backpressure-test PRIVATE ipc-backpressure)
 add_test(NAME ipc_backpressure_test COMMAND ipc-backpressure-test)
+
+# IPC Capabilities (add to ipc-protocol)
+target_sources(ipc-protocol PRIVATE src/ipc_capabilities.c)
+
+# Capabilities test
+add_executable(ipc-capabilities-test tests/test_ipc_capabilities.c)
+target_link_libraries(ipc-capabilities-test PRIVATE ipc-protocol)
+add_test(NAME ipc_capabilities_test COMMAND ipc-capabilities-test)

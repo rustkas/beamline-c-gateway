@@ -48,6 +48,7 @@ typedef enum {
     IPC_MSG_RESPONSE_ERROR   = 0x11,  /* Error response */
     IPC_MSG_PING             = 0xF0,  /* Ping (keepalive) */
     IPC_MSG_PONG             = 0xF1,  /* Pong (response to ping) */
+    IPC_MSG_CAPABILITIES     = 0xF2,  /* Request capabilities */
 } ipc_message_type_t;
 
 /**
