@@ -570,3 +570,12 @@ target_sources(jsonl-logger PRIVATE src/log_sanitizer.c)
 add_executable(log-sanitizer-test tests/test_log_sanitizer.c)
 target_link_libraries(log-sanitizer-test PRIVATE jsonl-logger)
 add_test(NAME log_sanitizer_test COMMAND log-sanitizer-test)
+
+# IPC Backpressure library
+add_library(ipc-backpressure STATIC src/ipc_backpressure.c)
+target_include_directories(ipc-backpressure PUBLIC include)
+
+# IPC Backpressure test
+add_executable(ipc-backpressure-test tests/test_ipc_backpressure.c)
+target_link_libraries(ipc-backpressure-test PRIVATE ipc-backpressure)
+add_test(NAME ipc_backpressure_test COMMAND ipc-backpressure-test)
