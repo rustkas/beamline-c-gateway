@@ -652,3 +652,13 @@ target_link_libraries(health-check PRIVATE pthread)
 add_executable(test-health-check tests/test_health_check.c)
 target_link_libraries(test-health-check PRIVATE health-check)
 add_test(NAME health_check_test COMMAND test-health-check)
+
+# Circuit Breaker library
+add_library(circuit-breaker STATIC src/circuit_breaker.c)
+target_include_directories(circuit-breaker PUBLIC include)
+target_link_libraries(circuit-breaker PRIVATE pthread)
+
+# Circuit Breaker test
+add_executable(test-circuit-breaker tests/test_circuit_breaker.c)
+target_link_libraries(test-circuit-breaker PRIVATE circuit-breaker)
+add_test(NAME circuit_breaker_test COMMAND test-circuit-breaker)
