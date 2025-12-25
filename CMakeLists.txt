@@ -596,3 +596,7 @@ target_include_directories(json-validator PUBLIC include)
 add_executable(json-validator-test tests/test_json_validator.c)
 target_link_libraries(json-validator-test PRIVATE json-validator)
 add_test(NAME json_validator_test COMMAND json-validator-test)
+
+# Fuzz test
+add_executable(fuzz-ipc-protocol tests/fuzz_ipc_protocol.c)
+target_link_libraries(fuzz-ipc-protocol PRIVATE ipc-protocol)

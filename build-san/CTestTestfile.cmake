@@ -1,0 +1,36 @@
+# CMake generated Testfile for 
+# Source directory: /home/rustkas/aigroup/apps/c-gateway
+# Build directory: /home/rustkas/aigroup/apps/c-gateway/build-san
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.
+add_test(observability_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-observability-test")
+set_tests_properties(observability_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;341;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(health_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-health-test")
+set_tests_properties(health_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;342;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(performance_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-performance-test")
+set_tests_properties(performance_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;343;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(rate_limiting_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-rate-limiting-test")
+set_tests_properties(rate_limiting_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;344;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(rate_limiter_distributed_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-rate-limiter-distributed-test")
+set_tests_properties(rate_limiter_distributed_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;345;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(redis_rate_limiter_unit_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-redis-rate-limiter-test")
+set_tests_properties(redis_rate_limiter_unit_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;394;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(redis_rate_limiter_integration_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-redis-rate-limiter-integration-test")
+set_tests_properties(redis_rate_limiter_integration_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;395;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(conflict_contract_test "/home/rustkas/aigroup/apps/c-gateway/build-san/c-gateway-conflict-contract-test")
+set_tests_properties(conflict_contract_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;416;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(ipc_protocol_test "/home/rustkas/aigroup/apps/c-gateway/build-san/ipc-protocol-test")
+set_tests_properties(ipc_protocol_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;480;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(ipc_config_test "/home/rustkas/aigroup/apps/c-gateway/build-san/ipc-config-test")
+set_tests_properties(ipc_config_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;491;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(jsonl_logger_test "/home/rustkas/aigroup/apps/c-gateway/build-san/jsonl-logger-test")
+set_tests_properties(jsonl_logger_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;564;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(log_sanitizer_test "/home/rustkas/aigroup/apps/c-gateway/build-san/log-sanitizer-test")
+set_tests_properties(log_sanitizer_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;572;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(ipc_backpressure_test "/home/rustkas/aigroup/apps/c-gateway/build-san/ipc-backpressure-test")
+set_tests_properties(ipc_backpressure_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;581;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(ipc_capabilities_test "/home/rustkas/aigroup/apps/c-gateway/build-san/ipc-capabilities-test")
+set_tests_properties(ipc_capabilities_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;589;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
+add_test(json_validator_test "/home/rustkas/aigroup/apps/c-gateway/build-san/json-validator-test")
+set_tests_properties(json_validator_test PROPERTIES  _BACKTRACE_TRIPLES "/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;598;add_test;/home/rustkas/aigroup/apps/c-gateway/CMakeLists.txt;0;")
