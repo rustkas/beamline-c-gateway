@@ -544,3 +544,12 @@ target_include_directories(router-contract PUBLIC include)
 
 # Link router-contract to ipc-nats-bridge
 target_link_libraries(ipc-nats-bridge PUBLIC router-contract)
+
+# NATS Resilience library  
+add_library(nats-resilience STATIC
+    src/nats_resilience.c
+)
+target_include_directories(nats-resilience PUBLIC include)
+
+# Link to bridge
+target_link_libraries(ipc-nats-bridge PUBLIC nats-resilience)

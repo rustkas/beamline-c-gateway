@@ -4,6 +4,7 @@
 
 #include "ipc_nats_bridge.h"
 #include "router_contract.h"
+#include "nats_resilience.h"
 #include "nats_client_stub.h"  /* For nats_request_decide */
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,11 +16,13 @@
  */
 struct ipc_nats_bridge_t {
     ipc_nats_config_t config;
+    nats_resilience_t *resilience;  /* Resilience manager */
     
     /* Statistics */
     size_t total_requests;
     size_t nats_errors;
     size_t timeouts;
+    size_t overload_rejects;  /* Rejected due to inflight limit */
 };
 
 /**
