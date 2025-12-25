@@ -553,3 +553,12 @@ target_include_directories(nats-resilience PUBLIC include)
 
 # Link to bridge
 target_link_libraries(ipc-nats-bridge PUBLIC nats-resilience)
+
+# JSONL Logger library
+add_library(jsonl-logger STATIC src/jsonl_logger.c)
+target_include_directories(jsonl-logger PUBLIC include)
+
+# JSONL Logger test
+add_executable(jsonl-logger-test tests/test_jsonl_logger.c)
+target_link_libraries(jsonl-logger-test PRIVATE jsonl-logger)
+add_test(NAME jsonl_logger_test COMMAND jsonl-logger-test)
