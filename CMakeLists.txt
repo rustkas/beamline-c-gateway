@@ -662,3 +662,13 @@ target_link_libraries(circuit-breaker PRIVATE pthread)
 add_executable(test-circuit-breaker tests/test_circuit_breaker.c)
 target_link_libraries(test-circuit-breaker PRIVATE circuit-breaker)
 add_test(NAME circuit_breaker_test COMMAND test-circuit-breaker)
+
+# Audit Log library
+add_library(audit-log STATIC src/audit_log.c)
+target_include_directories(audit-log PUBLIC include)
+target_link_libraries(audit-log PRIVATE pthread)
+
+# Audit Log test
+add_executable(test-audit-log tests/test_audit_log.c)
+target_link_libraries(test-audit-log PRIVATE audit-log)
+add_test(NAME audit_log_test COMMAND test-audit-log)
