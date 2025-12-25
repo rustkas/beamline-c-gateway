@@ -623,3 +623,12 @@ target_include_directories(ipc-streaming PUBLIC include)
 add_executable(test-ipc-streaming tests/test_ipc_streaming.c)
 target_link_libraries(test-ipc-streaming PRIVATE ipc-streaming)
 add_test(NAME ipc_streaming_test COMMAND test-ipc-streaming)
+
+# IPC PeerCred library
+add_library(ipc-peercred STATIC src/ipc_peercred.c)
+target_include_directories(ipc-peercred PUBLIC include)
+
+# IPC PeerCred test
+add_executable(test-ipc-peercred tests/test_ipc_peercred.c)
+target_link_libraries(test-ipc-peercred PRIVATE ipc-peercred)
+add_test(NAME ipc_peercred_test COMMAND test-ipc-peercred)
