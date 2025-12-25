@@ -562,3 +562,11 @@ target_include_directories(jsonl-logger PUBLIC include)
 add_executable(jsonl-logger-test tests/test_jsonl_logger.c)
 target_link_libraries(jsonl-logger-test PRIVATE jsonl-logger)
 add_test(NAME jsonl_logger_test COMMAND jsonl-logger-test)
+
+# Add log sanitizer to jsonl-logger
+target_sources(jsonl-logger PRIVATE src/log_sanitizer.c)
+
+# Log sanitizer test
+add_executable(log-sanitizer-test tests/test_log_sanitizer.c)
+target_link_libraries(log-sanitizer-test PRIVATE jsonl-logger)
+add_test(NAME log_sanitizer_test COMMAND log-sanitizer-test)

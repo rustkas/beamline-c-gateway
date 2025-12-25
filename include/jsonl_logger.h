@@ -71,6 +71,26 @@ void jsonl_log_response(const char *component, const char *request_id,
 void jsonl_log_error(const char *component, const char *request_id,
                      const char *error_code, const char *error_message);
 
+/**
+ * Sanitize JSON string (mask sensitive keys)
+ * 
+ * Masks values for keys: token, api_key, authorization, password, secret
+ * 
+ * @param json_str  Input JSON string
+ * @param out_buf   Output buffer
+ * @param buf_size  Output buffer size
+ * @return 0 on success, -1 on error
+ */
+int jsonl_sanitize_json(const char *json_str, char *out_buf, size_t buf_size);
+
+/**
+ * Check if a key is sensitive
+ * 
+ * @param key  Key name
+ * @return 1 if sensitive, 0 otherwise
+ */
+int jsonl_is_sensitive_key(const char *key);
+
 #ifdef __cplusplus
 }
 #endif
