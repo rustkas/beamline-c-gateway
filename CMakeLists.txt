@@ -614,3 +614,12 @@ add_test(NAME nats_subjects_test COMMAND test-nats-subjects)
 add_executable(test-task-cancel tests/test_task_cancel.c)
 target_link_libraries(test-task-cancel PRIVATE ipc-protocol)
 add_test(NAME task_cancel_test COMMAND test-task-cancel)
+
+# IPC Streaming library
+add_library(ipc-streaming STATIC src/ipc_streaming.c)
+target_include_directories(ipc-streaming PUBLIC include)
+
+# IPC Streaming test
+add_executable(test-ipc-streaming tests/test_ipc_streaming.c)
+target_link_libraries(test-ipc-streaming PRIVATE ipc-streaming)
+add_test(NAME ipc_streaming_test COMMAND test-ipc-streaming)
