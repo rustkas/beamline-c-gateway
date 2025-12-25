@@ -587,3 +587,12 @@ target_sources(ipc-protocol PRIVATE src/ipc_capabilities.c)
 add_executable(ipc-capabilities-test tests/test_ipc_capabilities.c)
 target_link_libraries(ipc-capabilities-test PRIVATE ipc-protocol)
 add_test(NAME ipc_capabilities_test COMMAND ipc-capabilities-test)
+
+# JSON Validator library
+add_library(json-validator STATIC src/json_validator.c)
+target_include_directories(json-validator PUBLIC include)
+
+# JSON Validator test
+add_executable(json-validator-test tests/test_json_validator.c)
+target_link_libraries(json-validator-test PRIVATE json-validator)
+add_test(NAME json_validator_test COMMAND json-validator-test)
