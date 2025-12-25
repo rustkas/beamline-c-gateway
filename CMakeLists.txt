@@ -632,3 +632,13 @@ target_include_directories(ipc-peercred PUBLIC include)
 add_executable(test-ipc-peercred tests/test_ipc_peercred.c)
 target_link_libraries(test-ipc-peercred PRIVATE ipc-peercred)
 add_test(NAME ipc_peercred_test COMMAND test-ipc-peercred)
+
+# Prometheus Exporter library
+add_library(prometheus-exporter STATIC src/prometheus_exporter.c)
+target_include_directories(prometheus-exporter PUBLIC include)
+target_link_libraries(prometheus-exporter PRIVATE pthread m)
+
+# Prometheus test
+add_executable(test-prometheus-exporter tests/test_prometheus_exporter.c)
+target_link_libraries(test-prometheus-exporter PRIVATE prometheus-exporter)
+add_test(NAME prometheus_exporter_test COMMAND test-prometheus-exporter)
