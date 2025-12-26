@@ -653,6 +653,16 @@ add_executable(test-health-check tests/test_health_check.c)
 target_link_libraries(test-health-check PRIVATE health-check)
 add_test(NAME health_check_test COMMAND test-health-check)
 
+# Gateway Health Integration library (Task 18)
+add_library(gateway-health STATIC src/gateway_health.c)
+target_include_directories(gateway-health PUBLIC include)
+target_link_libraries(gateway-health PUBLIC health-check nats-resilience)
+
+# Gateway Health Integration test
+add_executable(test-gateway-health tests/test_gateway_health.c)
+target_link_libraries(test-gateway-health PRIVATE gateway-health health-check nats-resilience)
+add_test(NAME gateway_health_test COMMAND test-gateway-health)
+
 # Circuit Breaker library
 add_library(circuit-breaker STATIC src/circuit_breaker.c)
 target_include_directories(circuit-breaker PUBLIC include)
@@ -672,3 +682,80 @@ target_link_libraries(audit-log PRIVATE pthread)
 add_executable(test-audit-log tests/test_audit_log.c)
 target_link_libraries(test-audit-log PRIVATE audit-log)
 add_test(NAME audit_log_test COMMAND test-audit-log)
+
+# NATS Connection Pool library (Task 23)
+add_library(nats-pool STATIC src/nats_pool.c)
+target_include_directories(nats-pool PUBLIC include)
+target_link_libraries(nats-pool PRIVATE pthread)
+
+# NATS Pool test
+add_executable(test-nats-pool tests/test_nats_pool.c)
+target_link_libraries(test-nats-pool PRIVATE nats-pool)
+add_test(NAME nats_pool_test COMMAND test-nats-pool)
+
+# ============================================================================
+# Performance Benchmarks (Task 20)
+# ============================================================================
+
+# Throughput benchmark
+add_executable(bench-ipc-throughput benchmarks/bench_ipc_throughput.c)
+target_link_libraries(bench-ipc-throughput PRIVATE pthread)
+
+# Latency benchmark
+add_executable(bench-ipc-latency benchmarks/bench_ipc_latency.c)
+
+# Memory benchmark
+add_executable(bench-memory benchmarks/bench_memory.c)
+
+# ============================================================================
+# Zero-Copy Optimization (Task 21)
+# ============================================================================
+
+# Buffer Pool library
+add_library(buffer-pool STATIC src/buffer_pool.c)
+target_include_directories(buffer-pool PUBLIC include)
+target_link_libraries(buffer-pool PRIVATE pthread)
+
+# Buffer Pool test
+add_executable(test-buffer-pool tests/test_buffer_pool.c)
+target_link_libraries(test-buffer-pool PRIVATE buffer-pool pthread)
+add_test(NAME buffer_pool_test COMMAND test-buffer-pool)
+
+# ============================================================================
+# Distributed Tracing (Task 17)
+# ============================================================================
+
+# Trace Context library
+add_library(trace-context STATIC src/trace_context.c)
+target_include_directories(trace-context PUBLIC include)
+
+# Trace Context test
+add_executable(test-trace-context tests/test_trace_context.c)
+target_link_libraries(test-trace-context PRIVATE trace-context)
+add_test(NAME trace_context_test COMMAND test-trace-context)
+
+# ============================================================================
+# Platform Gateways (Phase H - Tasks 29 & 30)
+# ============================================================================
+
+# WebSocket Gateway (Task 29) - stub implementation
+add_library(websocket-gateway STATIC src/websocket_gateway.c)
+target_include_directories(websocket-gateway PUBLIC include)
+target_link_libraries(websocket-gateway PRIVATE pthread)
+
+# WebSocket Gateway test
+add_executable(test-websocket-gateway tests/test_websocket_gateway.c)
+target_link_libraries(test-websocket-gateway PRIVATE websocket-gateway pthread)
+add_test(NAME websocket_gateway_test COMMAND test-websocket-gateway)
+
+# gRPC Gateway (Task 30) - stub implementation
+add_library(grpc-gateway STATIC src/grpc_gateway.c)
+target_include_directories(grpc-gateway PUBLIC include)
+target_link_libraries(grpc-gateway PRIVATE pthread)
+
+# gRPC Gateway test
+add_executable(test-grpc-gateway tests/test_grpc_gateway.c)
+target_link_libraries(test-grpc-gateway PRIVATE grpc-gateway pthread)
+add_test(NAME grpc_gateway_test COMMAND test-grpc-gateway)
+
+
