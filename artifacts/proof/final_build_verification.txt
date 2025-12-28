@@ -1,0 +1,3 @@
+build/bench-ipc-latency:    ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=47b2e66283241e018779ff7e9d35f38ee19a9c23, for GNU/Linux 3.2.0, not stripped
+build/bench-ipc-throughput: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=c12071541b8e5d8125e6c380a6aee3c31559b95d, for GNU/Linux 3.2.0, not stripped
+build/bench-memory:         ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=2433124e7d6906191a00760d68b01bfffa88f5a7, for GNU/Linux 3.2.0, not stripped
