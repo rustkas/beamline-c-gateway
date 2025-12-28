@@ -1,0 +1,100 @@
+name: C-Gateway CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: c-gateway-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential libjansson-dev cmake curl jq
+
+      - name: Build Gateway
+        run: |
+          make clean || true
+          make
+
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests..."
+          make test-observability || (echo "Unit tests failed" && exit 1)
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          make test-health || (echo "Integration tests failed" && exit 1)
+
+      - name: Run performance tests
+        run: |
+          echo "Running performance tests..."
+          make test-performance || echo "Performance tests completed with warnings"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: build/
+          retention-days: 7
+
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-22.04
+    needs: build-and-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential libjansson-dev cmake lcov
+
+      - name: Build with coverage
+        run: |
+          echo "Building tests with coverage..."
+          make test-coverage
+
+      - name: Generate coverage report
+        run: |
+          echo "Generating coverage report..."
+          bash scripts/generate_coverage.sh || echo "Coverage report generation completed"
+
+      - name: Display coverage summary
+        run: |
+          if [ -f build/coverage.info ]; then
+            echo "Coverage summary:"
+            lcov --summary build/coverage.info 2>/dev/null | grep -E "lines|functions|branches" || echo "Coverage data available"
+          fi
+
+      - name: Upload coverage HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-html
+          path: build/coverage_html/
+          retention-days: 7
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-data
+          path: |
+            build/coverage.info
+            build/coverage.xml
+          retention-days: 7

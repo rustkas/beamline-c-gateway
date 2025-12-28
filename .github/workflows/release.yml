@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-release:
+    name: Build Release
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential libjansson-dev cmake
+
+      - name: Build release
+        run: |
+          make clean
+          make release
+
+      - name: Create release archive
+        run: |
+          mkdir -p release
+          tar -czf release/c-gateway-${{ steps.get_version.outputs.VERSION }}.tar.gz \
+            build/c-gateway \
+            README.md \
+            LICENCE.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/c-gateway-*.tar.gz
+          body: |
+            C-Gateway Release ${{ steps.get_version.outputs.VERSION }}
+            
+            ## Changes
+            See CHANGELOG.md for details.
+          draft: false
+          prerelease: false
