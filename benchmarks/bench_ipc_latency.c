@@ -286,6 +286,17 @@ int main(int argc, char *argv[]) {
         printf("\n⚠️  WARNING: p99 > 10ms\n");
     }
     
+    /* Machine-readable JSON output (last line) */
+    printf("{\"benchmark\":\"latency_%zub\",", g_payload_size);
+    printf("\"p50_ms\":%.3f,", (double)p50 / 1000000.0);
+    printf("\"p95_ms\":%.3f,", (double)p95 / 1000000.0);
+    printf("\"p99_ms\":%.3f,", (double)p99 / 1000000.0);
+    printf("\"avg_ms\":%.3f,", mean_ns / 1000000.0);
+    printf("\"successful\":%d,", successful);
+    printf("\"total\":%d,", num_requests);
+    printf("\"payload_bytes\":%zu,", g_payload_size);
+    printf("\"exit_code\":0}\\n");
+
     free(latencies);
     return 0;
 }

@@ -203,6 +203,15 @@ int main(int argc, char *argv[]) {
     printf("  Peak FDs:      %d\n", max_fd);
     printf("  Final FDs:     %d\n", fd_final);
     printf("  FD Growth:     %d\n", max_fd - fd_baseline);
+    /* Machine-readable JSON output (last line) */
+    printf("{\"benchmark\":\"memory\",");
+    printf("\"requests\":%u,", requests);
+    printf("\"peak_rss_kb\":%ld,", max_rss);
+    printf("\"peak_fds\":%d,", max_fd);
+    printf("\"final_rss_kb\":%ld,", rss_final);
+    printf("\"final_fds\":%d,", fd_final);
+    printf("\"exit_code\":0}\\n");
+
     
     return 0;
 }

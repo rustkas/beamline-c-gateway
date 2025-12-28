@@ -336,5 +336,16 @@ int main(int argc, char *argv[]) {
         printf("\n⚠️  WARNING: < 1,000 req/sec\n");
     }
     
+    /* Machine-readable JSON output (last line) */
+    printf("{\"benchmark\":\"throughput_%zub\",", g_payload_size);
+    printf("\"rps\":%.0f,", throughput);
+    printf("\"requests\":%lu,", sent);
+    printf("\"completed\":%lu,", completed);
+    printf("\"failed\":%lu,", failed);
+    printf("\"duration_s\":%d,", duration);
+    printf("\"threads\":%d,", num_threads);
+    printf("\"payload_bytes\":%zu,", g_payload_size);
+    printf("\"exit_code\":0}\\n");
+
     return 0;
 }
