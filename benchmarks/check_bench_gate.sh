@@ -63,10 +63,10 @@ while IFS=$'\t' read -r benchmark exit_code status; do
     
     if [ "$status" = "PASS" ]; then
         echo "✅ PASS: $benchmark (exit $exit_code)"
-        ((PASS_COUNT++))
+        PASS_COUNT=$((PASS_COUNT + 1))
     else
         echo "❌ FAIL: $benchmark (exit $exit_code)"
-        ((FAIL_COUNT++))
+        FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
 done < "$EXIT_CODES_FILE"
 

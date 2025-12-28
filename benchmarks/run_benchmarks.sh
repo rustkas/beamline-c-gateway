@@ -238,7 +238,7 @@ for size in $PAYLOAD_SIZES; do
         status="FAIL"
     fi
     echo "throughput_${size}b	$exit_code	$status" >> "$RESULTS_DIR/exit_codes.tsv"
-    ((i++))
+    i=$((i + 1))
 done
 
 # Add latency exit codes
@@ -250,7 +250,7 @@ for size in $PAYLOAD_SIZES; do
         status="FAIL"
     fi
     echo "latency_${size}b	$exit_code	$status" >> "$RESULTS_DIR/exit_codes.tsv"
-    ((i++))
+    i=$((i + 1))
 done
 
 # Parse metrics from benchmark outputs
