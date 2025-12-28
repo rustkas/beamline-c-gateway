@@ -27,7 +27,7 @@ make
 ✅ **All 15 Requirements Complete**  
 ✅ **Production Ready**
 
-See: [STATUS.md](STATUS.md) | [FINAL_PROOF.md](FINAL_PROOF.md)
+See: [docs/dev/STATUS.md](docs/dev/STATUS.md)
 
 ---
 
@@ -43,10 +43,14 @@ See: [STATUS.md](STATUS.md) | [FINAL_PROOF.md](FINAL_PROOF.md)
 
 ## Documentation
 
-### Essential
-- [STATUS.md](STATUS.md) - Current project status
-- [FINAL_PROOF.md](FINAL_PROOF.md) - Proof of all requirements met
-- [PROOF.md](PROOF.md) - Initial critical fixes proof
+### User Documentation
+- [README.md](README.md) - This file
+- [LICENCE.md](LICENCE.md) - Project license
+
+### Developer Documentation
+- [docs/dev/STATUS.md](docs/dev/STATUS.md) - Current project status
+- [docs/dev/FINAL_PROOF.md](docs/dev/FINAL_PROOF.md) - Proof of all requirements
+- [docs/dev/PROOF.md](docs/dev/PROOF.md) - Initial critical fixes proof
 
 ### Implementation Details
 - [docs/implementation/](docs/implementation/) - Task completion, fixes
@@ -95,11 +99,13 @@ tests/
 
 **Evidence**: `artifacts/router-e2e/*/checks.tsv`, `summary.json`
 
+See: [docs/dev/FINAL_PROOF.md](docs/dev/FINAL_PROOF.md)
+
 ---
 
 ## License
 
-See [docs/LICENCE.md](docs/LICENCE.md)
+See [LICENCE.md](LICENCE.md)
 
 ---
 
