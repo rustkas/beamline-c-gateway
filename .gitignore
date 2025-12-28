@@ -24,3 +24,7 @@ Makefile
 # temp
 *.log
 *.tmp
+
+# local artifacts (must not be committed)
+artifacts/
+*.env
