@@ -1,20 +1,34 @@
 #!/bin/bash
 # .gitlab-ci/check-production-readiness.sh
 #
-# CI Guard: Production readiness ONLY from checks.tsv/summary.json
-# No markdown percentages allowed as source of truth
+# Production readiness gate (facts-only enforcement)
+# Checks ONLY artifacts in router-e2e evidence pack
+#
+# CHECK TAXONOMY (v2):
+# - SYS_*  = System-critical, must-pass (EXPLICIT LIST, versioned)
+# - INFO_* = Informational, visible but non-blocking
+# - PERF_* = Performance, threshold-based (warn/fail with policy)
+#
+# CRITICAL: SYS_ checks MUST be in explicit REQUIRED_CHECKS array
+# NO pattern matching ("all SYS_*") - prevents stealth check injection
 
 set -e
 
-EVIDENCE_DIR="artifacts/router-e2e"
+EVIDENCE_DIR="${1:-artifacts/router-e2e}"
 
-# GATING CHECKS (must PASS for production)
-# SYS_* prefix = system-level, must pass
-# INFO_* prefix = informational, non-gating
-REQUIRED_CHECKS=("SYS_NATS_UP" "SYS_ROUTER_RUNNING" "SYS_GATEWAY_SOCKET" "SYS_HAPPY_PATH")
+# REQUIRED_CHECKS: Explicit, versioned list of SYS_ checks
+# Changes require review + justification
+# Version: 2
+REQUIRED_CHECKS=(
+    "SYS_NATS_UP"
+    "SYS_GATEWAY_RESPONSIVE"
+    "SYS_HAPPY_PATH"
+    "SYS_PROTOCOL_VALID"
+)
 
-echo "=========================================="
-echo "Production Readiness Check (Facts Only)"
+echo "========================================"
+echo "Production Readiness Gate (Facts-Only)"
+echo "========================================"
 echo "=========================================="
 echo ""
 
