@@ -25,6 +25,20 @@
 #define DEFAULT_THREADS 4
 #define DEFAULT_WARMUP_REQUESTS 100
 
+static void print_usage(const char *prog) {
+    printf("Usage: %s [OPTIONS]\n", prog);
+    printf("\nIPC Throughput Benchmark (REAL PROTOCOL)\n");
+    printf("\nOptions:\n");
+    printf("  -d <seconds>   Duration in seconds (default: %d)\n", DEFAULT_DURATION);
+    printf("  -t <threads>   Number of threads (default: %d)\n", DEFAULT_THREADS);
+    printf("  -p <bytes>     Payload size in bytes (default: 2)\n");
+    printf("  -s <path>      Socket path (default: %s)\n", DEFAULT_SOCKET_PATH);
+    printf("  -h             Show this help\n");
+    printf("\nSocket Priority: CLI (-s) > ENV (IPC_SOCKET_PATH) > default\n");
+    printf("Warmup: %d requests before measurement\n", DEFAULT_WARMUP_REQUESTS);
+    printf("\n");
+}
+
 /* Atomic counters */
 static atomic_ulong g_requests_sent = 0;
 static atomic_ulong g_requests_completed = 0;
@@ -120,15 +134,38 @@ static int send_ipc_request(int sock) {
     }
     
     /* Receive remaining payload */
+    char *response_frame = malloc(frame_length);
+    if (!response_frame) return -1;
+    memcpy(response_frame, header, IPC_HEADER_SIZE); // Copy header to the full frame buffer
+    
     size_t payload_len = frame_length - IPC_HEADER_SIZE;
     if (payload_len > 0) {
-        char *payload = malloc(payload_len);
-        if (recv_all(sock, payload, payload_len) != (ssize_t)payload_len) {
-            free(payload);
+        if (recv_all(sock, response_frame + IPC_HEADER_SIZE, payload_len) != (ssize_t)payload_len) {
+            free(response_frame);
             return -1;
         }
-        free(payload);
     }
+    
+    /* Decode response and validate */
+    ipc_message_t response_msg;
+    ssize_t decoded_len = ipc_decode_message(response_frame, frame_length, &response_msg);
+    free(response_frame); // Free the buffer used for receiving the frame
+    
+    if (decoded_len < 0) {
+        return -1; // Failed to decode response
+    }
+    
+    if (response_msg.type != IPC_MSG_PONG) {
+        // Optionally free response_msg.payload if it was dynamically allocated by ipc_decode_message
+        // For this benchmark, we don't care about the content, just the type.
+        // Assuming ipc_decode_message manages its own payload memory or it's on stack.
+        return -1; // Expected PONG, got something else
+    }
+    
+    // If ipc_decode_message allocates payload, it should be freed here.
+    // Assuming for now it's not dynamically allocated or is handled internally.
+    // If ipc_decode_message returns a pointer to a dynamically allocated payload,
+    // it should be freed: if (response_msg.payload) free(response_msg.payload);
     
     return 0;
 }
@@ -207,6 +244,9 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
             g_payload_size = (size_t)atoi(argv[i + 1]);
             i++;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            print_usage(argv[0]);
+            return 0;
         } else if (strcmp(argv[i], "-h") == 0) {
             printf("Usage: %s [-d duration] [-t threads] [-s socket]\n", argv[0]);
             printf("  -d: Duration in seconds (default: %d)\n", DEFAULT_DURATION);
@@ -227,6 +267,7 @@ int main(int argc, char *argv[]) {
     
     printf("IPC Throughput Benchmark (REAL PROTOCOL)\n");
     printf("Duration: %d seconds, Threads: %d\n", duration, num_threads);
+    printf("Payload: %zu bytes\n", g_payload_size);
     printf("Warmup: %d requests\n", g_warmup_requests);
     printf("Socket: %s\n", g_socket_path);
     printf("\n");

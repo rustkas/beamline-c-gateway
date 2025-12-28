@@ -88,8 +88,10 @@ tcp_check() {
 
 start_router() {
   log "Starting router..."
-  bash -c "${ROUTER_CMD}" >"${art_dir}/router.log" 2>&1 &
+  echo "=== ROUTER START $(date -Is) ===" > "${art_dir}/router.log"
+  bash -c "${ROUTER_CMD}" >> "${art_dir}/router.log" 2>&1 &
   echo $! > "${art_dir}/router.pid"
+  log "Router PID: $(cat ${art_dir}/router.pid)"
 }
 
 start_gateway() {
@@ -98,8 +100,10 @@ start_gateway() {
     rm -f "${IPC_SOCKET_PATH}"
   fi
 
-  IPC_SOCKET_PATH="${IPC_SOCKET_PATH}" bash -c "${GATEWAY_CMD}" >"${art_dir}/gateway.log" 2>&1 &
+  echo "=== GATEWAY START $(date -Is) ===" > "${art_dir}/gateway.log"
+  IPC_SOCKET_PATH="${IPC_SOCKET_PATH}" bash -c "${GATEWAY_CMD}" >> "${art_dir}/gateway.log" 2>&1 &
   echo $! > "${art_dir}/gateway.pid"
+  log "Gateway PID: $(cat ${art_dir}/gateway.pid)"
 }
 
 stop_process() {
@@ -287,6 +291,9 @@ PY
 generate_checks_tsv() {
   local tsv="${art_dir}/checks.tsv"
   : > "${tsv}"
+  
+  # Schema version (C12: schema versioning)
+  printf "schema_version\t1\n" >> "${tsv}"
 
   # SYS_NATS_UP
   if tcp_check "${NATS_HOST}" "${NATS_PORT}"; then
@@ -379,6 +386,9 @@ if ! wait_for_unix_socket "${IPC_SOCKET_PATH}" "${GATEWAY_START_TIMEOUT_SEC}"; t
   exit 1
 fi
 
+log "✓ Gateway socket READY: ${IPC_SOCKET_PATH}"
+echo "=== GATEWAY READY $(date -Is) ===" >> "${art_dir}/gateway.log"
+
 sleep 2
 
 run_ipc_client
@@ -401,6 +411,13 @@ else
     GATE_STATUS="FAIL"
 fi
 
+# Collect failed checks
+FAILED_CHECKS_JSON="[]"
+if [ "$FAIL_COUNT" -gt 0 ]; then
+    FAILED_CHECKS_JSON=$(grep $'\t''FAIL'$'\t' "$art_dir/checks.tsv" | grep -v "^schema_version" | awk -F'\t' '{printf "{\"check\":\"%s\",\"details\":\"%s\",\"evidence\":\"%s\"},", $1, $3, $4}' | sed 's/,$//')
+    FAILED_CHECKS_JSON="[$FAILED_CHECKS_JSON]"
+fi
+
 # Generate summary.json
 cat > "$art_dir/summary.json" << EOF
 {
@@ -413,18 +430,24 @@ cat > "$art_dir/summary.json" << EOF
     "pass": $PASS_COUNT,
     "fail": $FAIL_COUNT
   },
+  "failed_checks": $FAILED_CHECKS_JSON,
   "environment": {
     "nats": "$NATS_HOST:$NATS_PORT",
     "socket": "$IPC_SOCKET_PATH",
     "git_commit": "$(git rev-parse HEAD 2>/dev/null || echo 'unknown')",
     "git_dirty": $(git diff-index --quiet HEAD 2>/dev/null && echo 'false' || echo 'true')
   },
-  "artifacts": {
-    "checks": "checks.tsv",
-    "client_data": "client.jsonl",
-    "gateway_log": "gateway.log",
-    "router_log": "router.log",
-    "metadata": ["meta.env", "meta.git", "meta.versions", "command.txt"]
+  "artifact_refs": {
+    "checks": "$art_dir/checks.tsv",
+    "client_data": "$art_dir/client.jsonl",
+    "gateway_log": "$art_dir/gateway.log",
+    "router_log": "$art_dir/router.log",
+    "metadata": {
+      "env": "$art_dir/meta.env",
+      "git": "$art_dir/meta.git",
+      "versions": "$art_dir/meta.versions",
+      "command": "$art_dir/command.txt"
+    }
   }
 }
 EOF

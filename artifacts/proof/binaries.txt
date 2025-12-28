@@ -1,0 +1,6 @@
+-rwxr-xr-x 1 rustkas rustkas 22K дек 28 10:31 build/bench-ipc-latency
+-rwxr-xr-x 1 rustkas rustkas 22K дек 28 10:31 build/bench-ipc-throughput
+-rwxr-xr-x 1 rustkas rustkas 18K дек 28 10:31 build/bench-memory
+build/bench-ipc-latency:    ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=47b2e66283241e018779ff7e9d35f38ee19a9c23, for GNU/Linux 3.2.0, not stripped
+build/bench-ipc-throughput: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=3b53b44b60b03328b47ab08b0fe329ac0f8c5ad4, for GNU/Linux 3.2.0, not stripped
+build/bench-memory:         ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=99bba10398b8d46e6821b429ba70483a7382bbae, for GNU/Linux 3.2.0, not stripped

@@ -98,12 +98,105 @@ echo ""
 echo "=========================================="
 echo "Load Test Summary"
 echo "=========================================="
-echo "Results saved to $RESULTS_DIR/"
+echo ""
+echo "=== Generating Facts-Only Artifacts ==="
+
+# Generate checks.tsv
+cat > "$RESULTS_DIR/checks.tsv" << EOF
+schema_version	1
+EOF
+
+# Check sustained load results
+SUSTAINED_EXIT=0
+if grep -q "error" "$RESULTS_DIR/sustained_load.txt" 2>/dev/null; then
+    SUSTAINED_EXIT=1
+fi
+
+if [ $SUSTAINED_EXIT -eq 0 ]; then
+    echo "LOAD_SUSTAINED_OK	PASS	no_errors_detected	sustained_load.txt" >> "$RESULTS_DIR/checks.tsv"
+else
+    echo "LOAD_SUSTAINED_OK	FAIL	errors_found	sustained_load.txt" >> "$RESULTS_DIR/checks.tsv"
+fi
+
+# Check spike load results
+SPIKE_EXIT=0
+if grep -q "error" "$RESULTS_DIR/spike_load.txt" 2>/dev/null; then
+    SPIKE_EXIT=1
+fi
+
+if [ $SPIKE_EXIT -eq 0 ]; then
+    echo "LOAD_SPIKE_OK	PASS	no_errors_detected	spike_load.txt" >> "$RESULTS_DIR/checks.tsv"
+else
+    echo "LOAD_SPIKE_OK	FAIL	errors_found	spike_load.txt" >> "$RESULTS_DIR/checks.tsv"
+fi
+
+# Count checks
+TOTAL_CHECKS=2
+PASS_COUNT=$(grep -c $'\t''PASS'$'\t' "$RESULTS_DIR/checks.tsv" || echo 0)
+FAIL_COUNT=$(grep -c $'\t''FAIL'$'\t' "$RESULTS_DIR/checks.tsv" || echo 0)
+
+# Determine gate
+GATE_PASS="false"
+GATE_STATUS="FAIL"
+if [ $FAIL_COUNT -eq 0 ] && [ $PASS_COUNT -eq $TOTAL_CHECKS ]; then
+    GATE_PASS="true"
+    GATE_STATUS="PASS"
+fi
+
+# Generate summary.json
+cat > "$RESULTS_DIR/summary.json" << EOF
+{
+  "timestamp": "$TIMESTAMP",
+  "duration_s": $DURATION,
+  "concurrency": $CONCURRENCY,
+  "socket": "$IPC_SOCKET_PATH",
+  "gate_pass": $GATE_PASS,
+  "gate_status": "$GATE_STATUS",
+  "checks": {
+    "total": $TOTAL_CHECKS,
+    "pass": $PASS_COUNT,
+    "fail": $FAIL_COUNT
+  },
+  "tests": {
+    "sustained_load": {
+      "status": "$([ $SUSTAINED_EXIT -eq 0 ] && echo 'PASS' || echo 'FAIL')",
+      "exit_code": $SUSTAINED_EXIT
+    },
+    "spike_load": {
+      "status": "$([ $SPIKE_EXIT -eq 0 ] && echo 'PASS' || echo 'FAIL')",
+      "exit_code": $SPIKE_EXIT
+    }
+  },
+  "artifact_refs": {
+    "checks": "$RESULTS_DIR/checks.tsv",
+    "sustained_load": "$RESULTS_DIR/sustained_load.txt",
+    "spike_load": "$RESULTS_DIR/spike_load.txt",
+    "metadata": {
+      "env": "$RESULTS_DIR/meta.env",
+      "git": "$RESULTS_DIR/meta.git",
+      "system": "$RESULTS_DIR/meta.system",
+      "command": "$RESULTS_DIR/command.txt"
+    }
+  }
+}
+EOF
+
+echo "✓ Generated checks.tsv"
+echo "✓ Generated summary.json"
+echo "✓ Gate status: $GATE_STATUS"
+echo ""
+echo "Results saved to: $RESULTS_DIR"
+echo ""
+
+# Display checks
+echo "=== Load Test Checks ==="
+cat "$RESULTS_DIR/checks.tsv"
+echo ""
+echo "Artifacts:"
 echo "- meta.env, meta.git, meta.system"
 echo "- command.txt"
 echo "- initial_throughput.txt, initial_latency.txt"
 echo "- sustained_load.txt"
 [ $DURATION -gt 30 ] && echo "- spike_load.txt"
-echo ""
 echo "✅ Load test complete!"
 echo "Artifacts: $RESULTS_DIR"

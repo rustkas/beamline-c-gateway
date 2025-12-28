@@ -147,6 +147,21 @@ int main(int argc, char *argv[]) {
             break;
         }
         
+        /* Validate response version and type */
+        uint8_t resp_version = (uint8_t)header[4];
+        uint8_t resp_type = (uint8_t)header[5];
+        
+        if (resp_version != IPC_PROTOCOL_VERSION) {
+            fprintf(stderr, "Invalid response version at %" PRIu32 ": got 0x%02x, expected 0x%02x\n",
+                    i, resp_version, IPC_PROTOCOL_VERSION);
+            break;
+        }
+        
+        if (resp_type != IPC_MSG_RESPONSE_OK && resp_type != IPC_MSG_PONG) {
+            fprintf(stderr, "Invalid response type at %" PRIu32 ": got 0x%02x\n", i, resp_type);
+            break;
+        }
+        
         /* Parse length */
         uint32_t resp_len;
         memcpy(&resp_len, header, 4);

@@ -35,6 +35,15 @@ router_e2e_evidence:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
 
+# D15: Forbid subjective percent readiness
+check_readiness_claims:
+  stage: gate
+  script:
+    - echo "=== Checking Readiness Claims ==="
+    - chmod +x scripts/check_percent_readiness.sh
+    - ./scripts/check_percent_readiness.sh
+  allow_failure: false
+
 # Production Readiness Gate (Facts Only!)
 production_readiness_gate:
   stage: validate
