@@ -107,3 +107,11 @@ deploy_production:
   
   environment:
     name: production
+
+# DoD Requirement: Negative test (gate must fail on benchmark failure)
+negative_gate_test:
+  stage: test
+  script:
+    - ./tests/test_gate_negative.sh
+  dependencies:
+    - build_benchmarks
