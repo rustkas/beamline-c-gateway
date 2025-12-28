@@ -28,3 +28,15 @@ Makefile
 # local artifacts (must not be committed)
 artifacts/
 *.env
+
+.ai/
+
+.cursor/
+
+.windsurf/
+
+.agent/
+
+.trae/
+
+.ai/
