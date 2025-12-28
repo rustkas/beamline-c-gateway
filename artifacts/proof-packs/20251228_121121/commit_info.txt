@@ -1,0 +1,5 @@
+97371dd09ee96704a1bda86ebd9657fc337a0ee1
+Kosorukov Anatolii
+java1cprog@gmail.com
+1766895842
+Move developer docs to docs/dev/

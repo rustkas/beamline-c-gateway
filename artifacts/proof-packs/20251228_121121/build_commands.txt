@@ -1,0 +1,5 @@
+# Build commands executed
+mkdir -p build
+gcc -o build/bench-ipc-latency benchmarks/bench_ipc_latency.c src/ipc_protocol.c -I./include -Wall -O2
+gcc -o build/bench-ipc-throughput benchmarks/bench_ipc_throughput.c src/ipc_protocol.c -I./include -Wall -O2 -lpthread
+gcc -o build/bench-memory benchmarks/bench_memory.c src/ipc_protocol.c -I./include -Wall -O2

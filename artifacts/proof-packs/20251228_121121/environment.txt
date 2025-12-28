@@ -1,0 +1,8 @@
+# Build environment
+Date: 2025-12-28T12:11:30+07:00
+Hostname: LAPTOP-CUE7V9JU
+User: rustkas
+PWD: /home/rustkas/aigroup/apps/c-gateway
+GCC: gcc (Ubuntu 12.3.0-1ubuntu1~22.04.2) 12.3.0
+Git: git version 2.34.1
+OS: Linux LAPTOP-CUE7V9JU 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
