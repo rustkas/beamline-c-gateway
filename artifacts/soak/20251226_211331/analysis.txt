@@ -1,0 +1,12 @@
+RSS Statistics:
+  Min: 1792 KB
+  Max: 1792 KB
+  Avg: 1792 KB
+  Growth: 0.00%
+
+FD Statistics:
+  Min: 14
+  Max: 14
+  Avg: 14.0
+
+Samples: 1426

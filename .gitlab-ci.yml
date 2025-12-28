@@ -1,0 +1,100 @@
+# GitLab CI Configuration
+# Production readiness enforcement via facts-only checks
+
+stages:
+  - test
+  - validate
+  - deploy
+
+variables:
+  EVIDENCE_DIR: "artifacts/router-e2e"
+
+# Run Router E2E Evidence Pack
+router_e2e_evidence:
+  stage: test
+  script:
+    # Start dependencies (NATS assumed running)
+    - echo "Starting Router E2E evidence generation..."
+    
+    # Run evidence pack
+    - ./tests/run_router_e2e_evidence_pack.sh
+    
+    # Archive results
+    - LATEST=$(ls -t artifacts/router-e2e/ | head -1)
+    - echo "Generated evidence pack: $LATEST"
+  
+  artifacts:
+    name: "router-e2e-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - artifacts/router-e2e/
+    expire_in: 30 days
+    reports:
+      junit: artifacts/router-e2e/*/checks.tsv
+  
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# Production Readiness Gate (Facts Only!)
+production_readiness_gate:
+  stage: validate
+  dependencies:
+    - router_e2e_evidence
+  
+  script:
+    # Run CI guard (facts-only enforcement)
+    - chmod +x .gitlab-ci/check-production-readiness.sh
+    - .gitlab-ci/check-production-readiness.sh
+  
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  
+  # CRITICAL: This job MUST pass for deployment
+  allow_failure: false
+
+# Benchmark Regression Check
+benchmark_regression:
+  stage: validate
+  dependencies:
+    - router_e2e_evidence
+  
+  script:
+    - echo "Checking for benchmark regressions..."
+    - LATEST=$(ls -t artifacts/router-e2e/ | head -1)
+    - HAPPY_PATH_LINE=$(grep "^SYS_HAPPY_PATH" artifacts/router-e2e/$LATEST/checks.tsv)
+    
+    # Extract p95 latency from details
+    - P95=$(echo "$HAPPY_PATH_LINE" | grep -oP 'p95_us=\K[0-9.]+')
+    
+    # Check p95 < 10ms (10000 µs)
+    - |
+      if (( $(echo "$P95 < 10000" | bc -l) )); then
+        echo "✅ p95 latency OK: ${P95}µs < 10ms"
+      else
+        echo "❌ p95 latency regression: ${P95}µs >= 10ms"
+        exit 1
+      fi
+  
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  
+  allow_failure: true  # Warning only for now
+
+# Deploy (only if production gate passes)
+deploy_production:
+  stage: deploy
+  dependencies:
+    - production_readiness_gate
+  
+  script:
+    - echo "Deploying to production..."
+    - echo "Production readiness verified via checks.tsv"
+    # Add actual deployment commands here
+  
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  
+  environment:
+    name: production

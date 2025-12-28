@@ -1,0 +1,20 @@
+#!/bin/bash
+# install_valgrind.sh - Install valgrind for memory validation
+
+echo "=========================================="
+echo "Valgrind Installation"
+echo "=========================================="
+echo ""
+echo "To install valgrind, run:"
+echo ""
+echo "  sudo apt-get update"
+echo "  sudo apt-get install -y valgrind"
+echo ""
+echo "Or with snap:"
+echo ""
+echo "  sudo snap install valgrind"
+echo ""
+echo "After installation, run:"
+echo ""
+echo "  ./tests/sanitizer_tests.sh"
+echo ""

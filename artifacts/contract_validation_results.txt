@@ -1,0 +1,87 @@
+============================================================
+ROUTER CONTRACT VALIDATION
+============================================================
+
+✓ Loaded Router contracts: /home/rustkas/aigroup/apps/otp/router/contracts/cp2_contracts.json
+
+============================================================
+CONTRACT METADATA
+============================================================
+Name: cp2_contracts
+Version: 0.1.0
+Status: draft
+Updated: 2025-12-22
+Owners: router, caf, platform
+
+============================================================
+GATEWAY-RELEVANT SUBJECTS
+============================================================
+
+Found 4 Gateway-related subjects:
+  - beamline.router.v1.decide
+  - beamline.router.v2.decide
+  - beamline.router.dlq.v2
+  - beamline.router.v2.status.backpressure
+
+Router subjects found: 4
+  - beamline.router.v1.decide
+  - beamline.router.v2.decide
+  - beamline.router.dlq.v2
+  - beamline.router.v2.status.backpressure
+
+============================================================
+CONVENTIONS
+============================================================
+
+Subject Versioning:
+  Rule: v1 subjects are frozen; v2 subjects must be additive and parallel. Never repurpose v1 semantics.
+  Allowed: ['v1', 'v2']
+
+Encoding:
+  Headers: utf8-string
+  Payload: binary-or-json
+
+ID Formats:
+  trace_id:
+    Format: uuid-or-opaque
+    Max Length: 128
+  tenant_id:
+    Format: opaque
+    Max Length: 128
+  request_id:
+    Format: opaque
+    Max Length: 128
+  assignment_id:
+    Format: opaque
+    Max Length: 128
+  msg_id:
+    Format: opaque
+    Max Length: 128
+
+============================================================
+GATEWAY COMPATIBILITY CHECK
+============================================================
+
+Gateway Implementation:
+  subject_pattern: Should use router.decide or similar
+  headers: UTF-8 strings
+  payload: Binary or JSON
+  trace_id: Max 128 chars
+  tenant_id: Max 128 chars
+
+============================================================
+VALIDATION RESULT
+============================================================
+
+✓ Encoding             : Compatible (UTF-8 headers, binary/JSON payload)
+✓ Trace ID             : Compatible (max 128 >= 32)
+✓ Versioning           : v1 subjects supported
+
+============================================================
+SUMMARY
+============================================================
+
+Checks Passed: 3/3
+
+✓ Gateway appears COMPATIBLE with Router contracts
+  (Full E2E testing still required)

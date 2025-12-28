@@ -694,15 +694,16 @@ target_link_libraries(test-nats-pool PRIVATE nats-pool)
 add_test(NAME nats_pool_test COMMAND test-nats-pool)
 
 # ============================================================================
-# Performance Benchmarks (Task 20)
+# Performance Benchmarks (Task 20) - REAL PROTOCOL
 # ============================================================================
 
-# Throughput benchmark
+# Throughput benchmark (uses real IPC protocol)
 add_executable(bench-ipc-throughput benchmarks/bench_ipc_throughput.c)
-target_link_libraries(bench-ipc-throughput PRIVATE pthread)
+target_link_libraries(bench-ipc-throughput PRIVATE ipc-protocol pthread)
 
-# Latency benchmark
+# Latency benchmark (uses real IPC protocol)
 add_executable(bench-ipc-latency benchmarks/bench_ipc_latency.c)
+target_link_libraries(bench-ipc-latency PRIVATE ipc-protocol pthread)
 
 # Memory benchmark
 add_executable(bench-memory benchmarks/bench_memory.c)
@@ -720,6 +721,16 @@ target_link_libraries(buffer-pool PRIVATE pthread)
 add_executable(test-buffer-pool tests/test_buffer_pool.c)
 target_link_libraries(test-buffer-pool PRIVATE buffer-pool pthread)
 add_test(NAME buffer_pool_test COMMAND test-buffer-pool)
+
+# Buffer Pool soak test (long-running)
+add_executable(soak-test-buffer-pool tests/soak_test_buffer_pool.c)
+target_link_libraries(soak-test-buffer-pool PRIVATE buffer-pool pthread)
+# Note: Soak test not added to CTest (too long for CI)
+
+# NATS Pool soak test (long-running)
+add_executable(soak-test-nats-pool tests/soak_test_nats_pool.c)
+target_link_libraries(soak-test-nats-pool PRIVATE nats-pool pthread)
+# Note: Soak test not added to CTest (too long for CI)
 
 # ============================================================================
 # Distributed Tracing (Task 17)

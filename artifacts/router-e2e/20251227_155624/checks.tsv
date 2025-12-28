@@ -1,0 +1,4 @@
+SYS_NATS_UP	PASS	nats=127.0.0.1:4222	meta.env
+SYS_ROUTER_RUNNING	PASS	pid=49652	router.log
+SYS_GATEWAY_SOCKET	FAIL	socket_missing=/tmp/beamline-gateway.sock	gateway.log
+SYS_CLIENT_RAN	FAIL	client_jsonl_missing	artifacts/router-e2e

@@ -1,0 +1,5 @@
+SYS_NATS_UP	PASS	nats=127.0.0.1:4222	meta.env
+SYS_ROUTER_RUNNING	PASS	pid=94503	router.log
+SYS_GATEWAY_SOCKET	PASS	socket=/tmp/beamline-gateway.sock	gateway.log
+SYS_IPC_PING	FAIL	pong_not_received	client.jsonl
+SYS_HAPPY_PATH	PASS	ok=50/50 rate=1.000 p50_us=306.967 p95_us=4630.479 p99_us=5930.705	client.jsonl

@@ -1,0 +1,37 @@
+FROM gcc:12 AS builder
+
+WORKDIR /build
+
+# Copy source
+COPY . .
+
+# Build with production flags
+RUN mkdir -p build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_FLAGS="-O3 -march=native -DNDEBUG" \
+          .. && \
+    make -j$(nproc)
+
+# Production image
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy binaries
+COPY --from=builder /build/build/ipc-server-demo /app/
+COPY --from=builder /build/build/*.so /app/ 2>/dev/null || true
+
+# Create socket directory
+RUN mkdir -p /tmp && chmod 1777 /tmp
+
+ENV IPC_SOCKET_PATH=/tmp/beamline-gateway.sock
+ENV NATS_URL=nats://nats:4222
+
+EXPOSE 8080
+
+CMD ["/app/ipc-server-demo", "/tmp/beamline-gateway.sock"]

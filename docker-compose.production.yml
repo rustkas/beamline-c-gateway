@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.10.7-alpine
+    container_name: production-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "-js -m 8222"
+    networks:
+      - gateway-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  router:
+    build:
+      context: /home/rustkas/aigroup/apps/otp/router
+      dockerfile: Dockerfile
+    container_name: production-router
+    depends_on:
+      nats:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://nats:4222
+      - BEAM_ENV=production
+    networks:
+      - gateway-network
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "beam"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: production-gateway
+    depends_on:
+      - nats
+    environment:
+      - IPC_SOCKET_PATH=/tmp/beamline-gateway.sock
+      - NATS_URL=nats://nats:4222
+      - GATEWAY_MODE=production
+    volumes:
+      - gateway-socket:/tmp
+    networks:
+      - gateway-network
+    healthcheck:
+      test: ["CMD", "test", "-S", "/tmp/beamline-gateway.sock"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  load-tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.loadtest
+    container_name: production-loadtest
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      - IPC_SOCKET_PATH=/tmp/beamline-gateway.sock
+      - TEST_DURATION=3600
+      - TEST_CONNECTIONS=100
+    volumes:
+      - gateway-socket:/tmp
+      - ./artifacts:/artifacts
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge
+
+volumes:
+  gateway-socket:

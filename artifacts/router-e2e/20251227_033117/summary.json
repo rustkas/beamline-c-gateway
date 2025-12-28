@@ -1,0 +1,11 @@
+{
+  "ts_start": "2025-12-27T03:31:19Z",
+  "ts_end": "2025-12-27T03:31:19Z",
+  "exit_code": 5,
+  "scenarios_total": 5,
+  "checks_total": 5,
+  "checks_passed": 0,
+  "checks_failed": 5,
+  "system_gate_pass": false,
+  "system_readiness_pct": 0
+}

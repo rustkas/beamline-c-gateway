@@ -1,0 +1,8 @@
+Test: Real Router Integration
+Date: 2025-12-27T08:54:18+07:00
+Hostname: LAPTOP-CUE7V9JU
+Kernel: 6.6.87.2-microsoft-standard-WSL2
+Git Commit (Gateway): 957f579b5432e2af71fd841957089b231fd44ed4
+Git Commit (Router): 39c271827f8b8380fb550643f6edd5db8f38b89a
+Router Location: /home/rustkas/aigroup/apps/otp/router
+Gateway Location: /home/rustkas/aigroup/apps/c-gateway

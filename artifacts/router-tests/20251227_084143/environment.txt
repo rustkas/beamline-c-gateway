@@ -1,0 +1,9 @@
+=== Test Environment ===
+Date: 2025-12-27T08:41:43+07:00
+Hostname: LAPTOP-CUE7V9JU
+Kernel: 6.6.87.2-microsoft-standard-WSL2
+GCC: gcc (Ubuntu 12.3.0-1ubuntu1~22.04.2) 12.3.0
+Python: Python 3.10.12
+Git Commit: 957f579b5432e2af71fd841957089b231fd44ed4
+Git Status: 80 files changed
+NATS_PID=53194

@@ -433,7 +433,7 @@ void abuse_detection_log_event(abuse_event_type_t event_type,
                  tm_info->tm_sec,
                  (long)tv.tv_usec);
     } else {
-        strcpy(timestamp, "1970-01-01T00:00:00.000000Z");
+        snprintf(timestamp, sizeof(timestamp), "1970-01-01T00:00:00.000000Z");
     }
     
     /* Log abuse event (structured JSON) */

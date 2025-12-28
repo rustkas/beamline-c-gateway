@@ -1,0 +1,5 @@
+=== Test Command ===
+Script: tests/run_router_scenarios_with_artifacts.sh
+Working Directory: /home/rustkas/aigroup/apps/c-gateway
+Test Type: Mock Router Integration Scenarios
+

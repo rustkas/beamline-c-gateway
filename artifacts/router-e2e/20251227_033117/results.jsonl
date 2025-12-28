@@ -1,0 +1,5 @@
+{"ts":"2025-12-27T03:31:19Z","scenario":"happy_path","check":"basic_request","ok":false,"details":"not_implemented"}
+{"ts":"2025-12-27T03:31:19Z","scenario":"errors","check":"4xx_5xx","ok":false,"details":"not_implemented"}
+{"ts":"2025-12-27T03:31:19Z","scenario":"timeouts","check":"late_reply","ok":false,"details":"not_implemented"}
+{"ts":"2025-12-27T03:31:19Z","scenario":"backpressure","check":"throttle","ok":false,"details":"not_implemented"}
+{"ts":"2025-12-27T03:31:19Z","scenario":"reconnect","check":"storm","ok":false,"details":"not_implemented"}

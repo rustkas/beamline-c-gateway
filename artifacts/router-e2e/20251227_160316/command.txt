@@ -1,0 +1,8 @@
+ts=20251227_160316
+pwd=/home/rustkas/aigroup/apps/c-gateway
+ipc_socket_path=/tmp/beamline-gateway.sock
+gateway_cmd=./build/ipc-server-demo /tmp/beamline-gateway.sock
+router_cmd=cd /home/rustkas/aigroup/apps/otp/router && rebar3 shell --eval 'application:ensure_all_started(beamline_router).'
+e2e_requests=50
+e2e_payload_bytes=256
+nats=127.0.0.1:4222

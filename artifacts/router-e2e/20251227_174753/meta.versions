@@ -1,0 +1,4 @@
+bash: 5.1.16(1)-release
+python3: Python 3.10.12
+rebar3: rebar 3.25.1 on Erlang/OTP 27 Erts 15.2.7.1
+gcc: gcc (Ubuntu 12.3.0-1ubuntu1~22.04.2) 12.3.0

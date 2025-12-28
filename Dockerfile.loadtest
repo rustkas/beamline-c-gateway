@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /loadtest
+
+RUN pip install --no-cache-dir numpy statistics
+
+COPY tests/production_load_test.py /loadtest/
+
+ENV IPC_SOCKET_PATH=/tmp/beamline-gateway.sock
+ENV TEST_DURATION=3600
+ENV TEST_CONNECTIONS=100
+
+CMD ["python3", "production_load_test.py"]

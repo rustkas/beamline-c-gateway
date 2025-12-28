@@ -1,0 +1,4 @@
+14:SOCKET_PATH=${IPC_SOCKET_PATH:-/tmp/beamline-gateway.sock}
+22:echo "Socket:        ${SOCKET_PATH}"
+26:if [ ! -S "$SOCKET_PATH" ]; then
+27:    echo "Error: IPC socket not found at $SOCKET_PATH"

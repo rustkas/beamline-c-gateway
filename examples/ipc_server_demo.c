@@ -17,7 +17,7 @@
 
 static ipc_server_t *g_server = NULL;
 
-void signal_handler(int sig) {
+static void signal_handler(int sig) {
     (void)sig;
     printf("\nShutting down...\n");
     if (g_server) {
@@ -25,7 +25,7 @@ void signal_handler(int sig) {
     }
 }
 
-void handle_message(const ipc_message_t *request, ipc_message_t *response, void *user_data) {
+static void handle_message(const ipc_message_t *request, ipc_message_t *response, void *user_data) {
     (void)user_data;
     
     printf("[handler] Received message type=%d payload_len=%zu\n", 
